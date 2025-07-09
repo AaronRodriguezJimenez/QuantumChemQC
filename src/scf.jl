@@ -63,7 +63,7 @@ function scf(
     Eel = sum(P .* (Hcore + F)) #Frobenius inner product
     println("Cycle 0: Eel = $(Eel)")
     #@info "Cycle 0: Eel = $(Eel)"
-    
+
     diis = DIIS(n) # Call diis function defined in diis.jl
 
     for cycle = 1:max_cycle
@@ -73,6 +73,7 @@ function scf(
 
         #Update Fock Matrix
         two_e_fock_matrix!(G, P, I)
+        F .= Hcore .+ G
 
         #Calculate electron energy
         Eold = Eel
