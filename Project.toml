@@ -1,0 +1,18 @@
+name = "QuantumChemQC"
+uuid = "35ff3bc5-b708-421f-922e-cc5716ace150"
+authors = ["aaronrodriguez <aarodjim@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GaussianBasis = "9bb1a3dc-0d1c-467e-84f5-0c4ef701360a"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
+
+[compat]
+FileIO = "1.17.0"
+GaussianBasis = "0.5.1"
+LinearAlgebra = "1.11.0"
+SpecialFunctions = "2.5.1"
+Tullio = "0.3.8"
