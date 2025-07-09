@@ -74,14 +74,20 @@ h1, h2 = QuantumChemQC.get_spin_orbital_tensors(mo_hcore, mo_eris)
  Now we can construc the fermionic hamiltonian as
 """
 # One-body terms: a†_p a_q
+println("  ")
+fzero = FermionOperator(ComplexF64(h0))
+display(fzero)
+
 n = size(h1, 1)
 for p in 1:n
     for q in 1:n
         coeff = h1[p, q]
-        term = [(p, true), (q, false)]  # 1-based indexing
-      #  println("a$p a$q $term $coeff")
-        fop = FermionOperator(term, coeff)
-        display(fop)
+        if abs(coeff) > 1e-7
+            term = [(p, true), (q, false)]  # 1-based indexing
+            #  println("a$p a$q $term $coeff")
+            fop = FermionOperator(term, coeff)
+            display(fop)
+        end
     end
 end
 
@@ -89,7 +95,10 @@ end
 # Two-body terms: a†_p a†_q a_r a_s
 for p in 1:n, q in 1:n, r in 1:n, s in 1:n
     coeff = h2[p, q, r, s]
-    term = [(p, true), (q, true), (r, false), (s, false)]
-  #  println("a$p a$q a$r a$s $term $coeff")
-    fop = FermionOperator(term, coeff)
+    if abs(coeff) > 1e-7
+        term = [(p, true), (q, true), (r, false), (s, false)]
+        #  println("a$p a$q a$r a$s $term $coeff")
+        fop = FermionOperator(term, coeff)
+        display(fop)
+    end
 end

@@ -38,9 +38,9 @@ function Base.show(io::IO, op::FermionOperator)
             print(io, " + ")
         end
         print(io, coeff)
+        print(io, " [")
         if !isempty(ops)
-            print(io, " [")
-            join(io, ops, " ")
+            join(io, ops, " , ")
         end
         first = false
     end
