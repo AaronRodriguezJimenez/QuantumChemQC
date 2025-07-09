@@ -74,3 +74,39 @@ function Z_to_symbol(Z)
 
     return dict[Z]
 end
+
+"""
+ This function converts the one and two-body integrals (in MO basis) into tensor form
+ is based on openfermion.ops.representations.get_tensors_from_integrals
+"""
+function get_spin_orbital_tensors(hcore::Matrix{Float64}, eri::Array{Float64,4})
+    n_orb = size(hcore, 1)
+    n_spin = 2 * n_orb
+
+    h1 = zeros(n_spin, n_spin)
+    h2 = zeros(n_spin, n_spin, n_spin, n_spin)
+
+    for p in 1:n_orb
+        for q in 1:n_orb
+            # Populate 1-body terms
+            h1[2p-1, 2q-1] = hcore[p, q]  # alpha-alpha
+            h1[2p,   2q]   = hcore[p, q]  # beta-beta
+
+            for r in 1:n_orb
+                for s in 1:n_orb
+                    val = eri[p, q, r, s] / 2
+
+                    # Mixed spin
+                    h2[2p-1, 2q,   2r,   2s-1] += val
+                    h2[2p,   2q-1, 2r-1, 2s]   += val
+
+                    # Same spin
+                    h2[2p-1, 2q-1, 2r-1, 2s-1] += val
+                    h2[2p,   2q,   2r,   2s]   += val
+                end
+            end
+        end
+    end
+
+    return h1, h2
+end

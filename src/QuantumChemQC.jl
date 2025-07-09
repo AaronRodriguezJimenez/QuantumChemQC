@@ -17,5 +17,8 @@ include("param.jl")
 include("scf.jl")
 include("diis.jl")
 include("utils.jl")
+include("type_FermionOp.jl")
 
+export FermionOp
+export FermionOperator
 end # module QuantumChemQC
