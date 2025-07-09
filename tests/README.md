@@ -1,7 +1,7 @@
 # QuantumChemQC.jl
 
 `QuantumChemQC.jl` is a Julia package for performing basic **quantum chemistry calculations** with an eye toward applications in **quantum computing**.  
-The current implementation is based on ideas and tools from [HartreeFock.jl](https://github.com/felipenoris/HartreeFock.jl) and [DoNOF.jl](https://github.com/jmiguelem/DoNOF.jl).
+The current implementation is based on ideas and tools from [HartreeFock.jl](https://github.com/panxl/HartreeFock.jl.git) and [DoNOF.jl](https://github.com/felipelewyee/DoNOF.jl.git).
 
 ---
 
