@@ -55,7 +55,7 @@ function Param(bset, mul, charge)
         nbfaux,
         nalpha,
         nbeta,
-        ne,
+        ne,       #net charge
         mul,
         ndoc,
         nsoc,

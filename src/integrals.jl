@@ -10,6 +10,7 @@ function compute_integrals(bset, p)
     V = (V .+ V') ./ 2
     H = T + V
     I= nothing
+    
     if (!p.RI)
         # Integrales de Repulsión Electrónica, ERIs (mu nu | sigma lambda)
         I = ERI_2e4c(bset)
