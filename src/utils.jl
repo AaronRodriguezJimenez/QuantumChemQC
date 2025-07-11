@@ -110,3 +110,70 @@ function get_spin_orbital_tensors(hcore::Matrix{Float64}, eri::Array{Float64,4})
 
     return h1, h2
 end
+
+
+"""
+ # # # Qubit utilities
+"""
+
+"""
+ Under the Symplectic representation, operators are mapped as follows:
+        a_j^dagger -> Z_0 .. Z_{j-1} (X_j - iY_j) / 2
+        a_j        -> Z_0 .. Z_{j-1} (X_j + iY_j) / 2
+"""
+function jw_transform(N, site)
+    z_string = [i for i in 1:site-1]
+    p = Pauli(N, Z = z_string, X = [site]) + im * Pauli(N, Z=z_string, Y=[site])
+    return 0.5*p
+end
+
+"""
+ The following is the generator function that can produce the qubit Hamiltoinan
+    in the JW representation, as input it uses the resulting molecular orbitals
+    from a SCF calculation expressed in MOs.
+"""
+function qubit_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4})
+ 
+    generators = Vector{Pauli{N}}()
+    parameters = Vector{Float64}()
+
+    one_e_term = PauliSum(N)
+    two_e_term = PauliSum(N)
+
+    # One-body terms: a†_p a_q
+    n = size(h1, 1)
+    for p in 1:n
+        for q in 1:n
+            coeff = h1[p, q]
+            if abs(coeff) > 1e-7
+                a_dag_i = jw_transform(N, p)
+                a_j = jw_transform(N, q)
+                one_e_term += a_dag_i * a_j
+                push!(parameters, coeff)
+            end
+        end
+    end
+
+    for (pauli, coeff) in simplified_one_e
+            push!(generators, Pauli(pauli))
+    end
+
+    # Two-body terms: a†_p a†_q a_r a_s
+    for p in 1:n, q in 1:n, r in 1:n, s in 1:n
+        coeff = h2[p, q, r, s]
+        if abs(coeff) > 1e-7
+            a_dag_p = jw_transform(N, p)
+            a_dag_q = jw_transform(N, q)
+            a_r = jw_transform(N, r)
+            a_s = jw_transform(N, s)
+            two_e_term += a_dag_p * a_dag_q * a_r * a_s
+            push!(parameters, coeff)
+        end
+    end
+
+    for (pauli, coeff) in two_e_term
+            push!(generators, Pauli(pauli))
+    end
+
+    return generators, parameters
+end

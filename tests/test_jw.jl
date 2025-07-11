@@ -102,3 +102,28 @@ for p in 1:n, q in 1:n, r in 1:n, s in 1:n
         display(fop)
     end
 end
+
+"""
+ This is the Fermionic Hamiltonian, in order to transform to a qubit Hamiltonian
+ we can recurr to the Jordan-Wigner transformation.
+ In order to do this we will make use of the PauliOperators.jl package,
+ which recurr to the symplectic representation of Pauli Strings.
+ 
+ For uses into Pauli Propagation techniques it is more usefull to represent the 
+ Hamiltonian as a function that delivers the operators and the associated coefficients
+ more than delivering a single Qubit operator object.
+
+"""
+
+N = size(h1, 1)
+qubit_paulis, qubit_coeffs = QuantumChemQC.qubit_hamiltonian(N, h0, h1, h2) 
+
+println(" Qubit Operator Paulis")
+for term in qubit_paulis
+    display(term)
+end
+
+for coeff in qubit_coeffs
+    display(coeff)
+end
+println("Total Terms are : ", length(qubit_coeffs))
