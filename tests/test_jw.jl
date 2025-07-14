@@ -1,6 +1,7 @@
 using PauliOperators
 using QuantumChemQC
 using Tullio
+using Printf
 
 """
  Here we explore the construction of a qubit hamiltonian for H2
@@ -71,6 +72,36 @@ h0 = scf_obj.Enuc + core
 h1, h2 = QuantumChemQC.get_spin_orbital_tensors(mo_hcore, mo_eris)
 
 """
+ Spin selection rules: 
+ A term like a^_p*a_q or a^_p*a^_q*a_r*a_s should vanish inless it conserves spin.
+ - One-body terms only allow p, q with same spin
+ - Two-body terms are non zero only if: 
+    Number of creation = number of annihilation operators of each spin
+    for example 2 creation (1alpha + 1beta) and 2 annihilation (1alpha + 1 beta) -> are ok.
+"""
+function spin(p)
+    return isodd(p) ? :α : :β
+end
+
+function spin_conserving(op::FermionOperator)
+    for (term, _) in op.terms
+        n_α = 0
+        n_β = 0
+        for op in term
+            if isodd(op.mode)  # Fermionic mode 1 is spin-up (α), 2 is spin-down (β), etc.
+                n_α += op.creation ? 1 : -1
+            else
+                n_β += op.creation ? 1 : -1
+            end
+        end
+        if n_α != 0 || n_β != 0
+            return false
+        end
+    end
+    return true
+end
+
+"""
  Now we can construc the fermionic hamiltonian as
 """
 # One-body terms: a†_p a_q
@@ -86,6 +117,10 @@ for p in 1:n
             term = [(p, true), (q, false)]  # 1-based indexing
             #  println("a$p a$q $term $coeff")
             fop = FermionOperator(term, coeff)
+            if !spin_conserving(fop)
+                println("This term is not spin_conserving: $term")
+                continue
+            end
             display(fop)
         end
     end
@@ -99,9 +134,16 @@ for p in 1:n, q in 1:n, r in 1:n, s in 1:n
         term = [(p, true), (q, true), (r, false), (s, false)]
         #  println("a$p a$q a$r a$s $term $coeff")
         fop = FermionOperator(term, coeff)
+        if !spin_conserving(fop)
+            println("This term is not spin_conserving: $term")
+            continue
+        end
         display(fop)
     end
 end
+
+# Filter spin conservation terms
+
 
 """
  This is the Fermionic Hamiltonian, in order to transform to a qubit Hamiltonian
@@ -126,4 +168,34 @@ end
 for coeff in qubit_coeffs
     display(coeff)
 end
-println("Total Terms are : ", length(qubit_coeffs))
+println("Total Terms are : ", length(qubit_paulis))
+println("Total Coeff are : ", length(qubit_coeffs))
+
+function combine_pauli_terms(generators::Vector{Pauli{N}}, parameters::Vector{ComplexF64}) where N
+    combined = Dict{Pauli{N}, ComplexF64}()
+
+    for (p, coeff) in zip(generators, parameters)
+        if haskey(combined, p)
+            combined[p] += coeff
+        else
+            combined[p] = coeff
+        end
+    end
+
+    #filter out negligible terms
+    #filtered = Dict{Pauli{N}, ComplexF64}()
+    #for (p, c) in combined
+    #    if abs(real(c)) > 1e-8 || abs(imag(c)) > 1e-8
+    #        filtered[p] = c
+    #    end
+    #end
+    return combined #filtered
+end
+
+ham_dict = combine_pauli_terms(qubit_paulis, qubit_coeffs)
+
+for (pauli, coeff) in sort(collect(ham_dict); by=x->string(x[1]))
+    println(@sprintf("%+.6f %+.6fim | %s", real(coeff), imag(coeff), string(pauli)))
+end
+
+println("Final number of operators: ", length(ham_dict))

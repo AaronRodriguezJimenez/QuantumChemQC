@@ -77,7 +77,10 @@ end
 
 """
  This function converts the one and two-body integrals (in MO basis) into tensor form
- is based on openfermion.ops.representations.get_tensors_from_integrals
+ is based on openfermion.ops.representations.get_tensors_from_integrals, we follow  
+ the indexing convention
+ p = 2i      → β spin of orbital i
+ p = 2i - 1  → α spin of orbital i
 """
 function get_spin_orbital_tensors(hcore::Matrix{Float64}, eri::Array{Float64,4})
     n_orb = size(hcore, 1)
@@ -121,10 +124,20 @@ end
         a_j^dagger -> Z_0 .. Z_{j-1} (X_j - iY_j) / 2
         a_j        -> Z_0 .. Z_{j-1} (X_j + iY_j) / 2
 """
-function jw_transform(N, site)
-    z_string = [i for i in 1:site-1]
-    p = Pauli(N, Z = z_string, X = [site]) + im * Pauli(N, Z=z_string, Y=[site])
-    return 0.5*p
+function JW_creator_mapping(N, i::Int64)
+    # Compute a^dagger_i term
+    ax_term = Pauli(2^(i-1)-1, 2^(i-1), N)
+    ay_term = Pauli(2^(i)-1, 2^(i-1), N)
+    a_dagg_i = 0.5 * (ax_term - ay_term)
+    return a_dagg_i
+end
+
+function JW_annihilator_mapping(N, j::Int64)
+    # Compute a_j term
+    bx_term = Pauli(2^(j-1)-1, 2^(j-1), N)
+    by_term = Pauli(2^(j)-1, 2^(j-1), N)
+    a_j = 0.5 * (bx_term + by_term)
+    return a_j
 end
 
 """
@@ -135,7 +148,7 @@ end
 function qubit_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4})
  
     generators = Vector{Pauli{N}}()
-    parameters = Vector{Float64}()
+    parameters = Vector{ComplexF64}()
 
     one_e_term = PauliSum(N)
     two_e_term = PauliSum(N)
@@ -145,34 +158,41 @@ function qubit_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array
     for p in 1:n
         for q in 1:n
             coeff = h1[p, q]
-            if abs(coeff) > 1e-7
-                a_dag_i = jw_transform(N, p)
-                a_j = jw_transform(N, q)
-                one_e_term += a_dag_i * a_j
-                push!(parameters, coeff)
-            end
+            a_dag_i = JW_creator_mapping(N, p)
+            a_j = JW_annihilator_mapping(N, q)
+          #  display(a_dag_i*a_j)
+          #  println("---")
+            one_e_term += coeff*(a_dag_i * a_j)
         end
     end
+    #println(length(one_e_term))
 
-    for (pauli, coeff) in simplified_one_e
-            push!(generators, Pauli(pauli))
+    for (pauli, coeff) in one_e_term
+        abs(coeff) > 1e-7 || continue
+        push!(generators, Pauli(pauli))
+        push!(parameters, coeff)
+        println("Coeff associated to paulis in one_e_term $coeff")
+        println(Pauli(pauli))
     end
 
     # Two-body terms: a†_p a†_q a_r a_s
     for p in 1:n, q in 1:n, r in 1:n, s in 1:n
-        coeff = h2[p, q, r, s]
-        if abs(coeff) > 1e-7
-            a_dag_p = jw_transform(N, p)
-            a_dag_q = jw_transform(N, q)
-            a_r = jw_transform(N, r)
-            a_s = jw_transform(N, s)
-            two_e_term += a_dag_p * a_dag_q * a_r * a_s
-            push!(parameters, coeff)
-        end
+        # Apply physicist's antisymmetrization
+        coeff = h2[p,q,r,s] 
+        a_dag_p = JW_creator_mapping(N, p)
+        a_dag_q = JW_creator_mapping(N, q)
+        a_r = JW_annihilator_mapping(N, r)
+        a_s = JW_annihilator_mapping(N, s)
+        two_e_term += coeff* (a_dag_p * a_dag_q * a_r * a_s)
     end
 
+    #println(length(two_e_term))
     for (pauli, coeff) in two_e_term
-            push!(generators, Pauli(pauli))
+        abs(coeff) > 1e-7 || continue
+        push!(generators, Pauli(pauli))
+        push!(parameters, coeff)
+        println("Coeff associated to paulis in two_e_term $coeff")
+        println(Pauli(pauli))
     end
 
     return generators, parameters
