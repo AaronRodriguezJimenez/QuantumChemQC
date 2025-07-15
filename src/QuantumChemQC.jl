@@ -8,6 +8,7 @@ using SpecialFunctions
 using GaussianBasis
 using FileIO
 using StaticArrays
+using IterTools
 
 using PauliOperators  # v2
 
@@ -17,6 +18,8 @@ include("param.jl")
 include("scf.jl")
 include("diis.jl")
 include("utils.jl")
+include("fermion_utils.jl")
+include("qubit_utils.jl")
 include("type_FermionOp.jl")
 
 export FermionOp

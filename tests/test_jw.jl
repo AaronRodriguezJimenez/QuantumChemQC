@@ -2,6 +2,7 @@ using PauliOperators
 using QuantumChemQC
 using Tullio
 using Printf
+using IterTools
 
 """
  Here we explore the construction of a qubit hamiltonian for H2
@@ -43,8 +44,18 @@ C = scf_obj.C # MO coeffs
 
 mo_hcore = C' * ao_hcore * C 
 mo_eris = Array{Float64, 4}(undef, size(ao_eris)...)
+# Note ao_eris are in chemist notation, so the following line:
 @tullio  mo_eris[p,q,r,s] := C[μ,p] * C[ν,q] * C[λ,r] * C[σ,s] * ao_eris[μ,ν,λ,σ]
+# will produce discrepancies with the result from openfermion
+# To fix it, we need to perform:
+#@tullio mo_eris[p,q,r,s] := C[μ,p] * C[λ,r] * C[ν,q] * C[σ,s] * ao_eris[μ,λ,ν,σ]
 
+# If needed, we can convert between chemist and physicis notations by transposing axes:
+#ao_eris_phys = permutedims(ao_eris_chem, (1,3,2,4))  # chemist → physicist
+println("One body integrls (H_core) in MO representation: ")
+display(mo_hcore)
+println("Two body integrals in MO representation: ")
+display(mo_eris)
 
 """
  In some cases depending on the storing of the two electron integrals, some codes 
@@ -67,9 +78,11 @@ mo_eris = Array{Float64, 4}(undef, size(ao_eris)...)
  hamiltonian. This is nothing but an antisymmetrization procedure which will give 
  the spin-orbital TENSORS as a result:
 """
-core =0 #In this case we do not take an AS so Ecore = 0
+core =0 #In this case we do not take an Active Space so Ecore = 0
 h0 = scf_obj.Enuc + core 
 h1, h2 = QuantumChemQC.get_spin_orbital_tensors(mo_hcore, mo_eris)
+# Note: current implementation does not yield the interleaved version of the fermionic 
+# hamiltonian. Matching with the default version from OpenFermion.
 
 """
  Spin selection rules: 
@@ -128,9 +141,10 @@ end
 
 
 # Two-body terms: a†_p a†_q a_r a_s
+# Working in the Physiscist notation to match with OpenFermion
 for p in 1:n, q in 1:n, r in 1:n, s in 1:n
     coeff = h2[p, q, r, s]
-    if abs(coeff) > 1e-7
+    if abs(coeff) > 1e-12
         term = [(p, true), (q, true), (r, false), (s, false)]
         #  println("a$p a$q a$r a$s $term $coeff")
         fop = FermionOperator(term, coeff)
@@ -141,9 +155,6 @@ for p in 1:n, q in 1:n, r in 1:n, s in 1:n
         display(fop)
     end
 end
-
-# Filter spin conservation terms
-
 
 """
  This is the Fermionic Hamiltonian, in order to transform to a qubit Hamiltonian
