@@ -4,10 +4,11 @@
 
 """
  This function converts the one and two-body integrals (in MO basis) into tensor form
- is based on openfermion.ops.representations.get_tensors_from_integrals, we follow  
- the indexing convention
- p = 2i      → β spin of orbital i
- p = 2i - 1  → α spin of orbital i
+(one- and two-body coefficients) is based on 
+openfermion.ops.representations.get_tensors_from_integrals, 
+we follow the indexing convention
+ p = 2i      → α spin of orbital i
+ p = 2i - 1  → β spin of orbital i
 """
 function get_spin_orbital_tensors(hcore::Matrix{Float64}, eri::Array{Float64,4})
     n_orb = size(hcore, 1)
@@ -16,23 +17,27 @@ function get_spin_orbital_tensors(hcore::Matrix{Float64}, eri::Array{Float64,4})
     h1 = zeros(n_spin, n_spin)
     h2 = zeros(n_spin, n_spin, n_spin, n_spin)
 
+    #logical mask, indexing by a boolean array selects elements at the indices where its values are true.
+    mask(val) = val * (abs(val) > 1e-10)
+
     for p in 1:n_orb
         for q in 1:n_orb
             # Populate 1-body terms
-            h1[2p-1, 2q-1] = hcore[p, q]  # alpha-alpha
-            h1[2p,   2q]   = hcore[p, q]  # beta-beta
+            val = mask(hcore[p, q])
+            h1[2p, 2q] = val #hcore[p, q]  # alpha-alpha
+            h1[2p-1, 2q-1]   = val #hcore[p, q]  # beta-beta
 
             for r in 1:n_orb
                 for s in 1:n_orb
-                    val = eri[p, q, r, s] / 2
+                    val = mask(eri[p, q, r, s] / 2)
 
                     # Mixed spin
-                    h2[2p-1, 2q,   2r,   2s-1] += val
                     h2[2p,   2q-1, 2r-1, 2s]   += val
+                    h2[2p-1, 2q,   2r,   2s-1] += val
 
                     # Same spin
-                    h2[2p-1, 2q-1, 2r-1, 2s-1] += val
-                    h2[2p,   2q,   2r,   2s]   += val
+                    h2[2p,   2q,   2r,   2s]   += val      # α-α-α-α
+                    h2[2p-1, 2q-1, 2r-1, 2s-1] += val      # β-β-β-β
                 end
             end
         end
@@ -145,7 +150,7 @@ end
  notation.
 """
 function chem_to_phys(tensor::Array{Float64,4})
-    return permutedims(tensor, (1, 4, 2, 3))  
+    return permutedims(tensor, (1, 3, 2, 4))  
 end
 
 function find_index_order(two_body_tensor::Array{Float64, 4}; rtol=1e-5, atol=1e-8)::IndexType

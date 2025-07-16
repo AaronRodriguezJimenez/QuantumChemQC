@@ -3,6 +3,7 @@ using QuantumChemQC
 using Tullio
 using Printf
 using IterTools
+using LinearAlgebra
 
 """
  Here we explore the construction of a qubit hamiltonian for H2
@@ -44,11 +45,8 @@ C = scf_obj.C # MO coeffs
 
 mo_hcore = C' * ao_hcore * C 
 mo_eris = Array{Float64, 4}(undef, size(ao_eris)...)
-# Note ao_eris are in chemist notation, so the following line:
-@tullio  mo_eris[p,q,r,s] := C[μ,p] * C[ν,q] * C[λ,r] * C[σ,s] * ao_eris[μ,ν,λ,σ]
-# will produce discrepancies with the result from openfermion
-# To fix it, we need to perform:
-#@tullio mo_eris[p,q,r,s] := C[μ,p] * C[λ,r] * C[ν,q] * C[σ,s] * ao_eris[μ,λ,ν,σ]
+# Openfermion convention:
+@tullio mo_eris[p,q,r,s] := C[μ, p] * C[λ, s] * C[ν, q] * C[σ, r] * ao_eris[μ, λ, ν, σ]
 
 # If needed, we can convert between chemist and physicis notations by transposing axes:
 #ao_eris_phys = permutedims(ao_eris_chem, (1,3,2,4))  # chemist → physicist
@@ -83,6 +81,7 @@ h0 = scf_obj.Enuc + core
 h1, h2 = QuantumChemQC.get_spin_orbital_tensors(mo_hcore, mo_eris)
 # Note: current implementation does not yield the interleaved version of the fermionic 
 # hamiltonian. Matching with the default version from OpenFermion.
+
 
 """
  Spin selection rules: 
@@ -144,7 +143,7 @@ end
 # Working in the Physiscist notation to match with OpenFermion
 for p in 1:n, q in 1:n, r in 1:n, s in 1:n
     coeff = h2[p, q, r, s]
-    if abs(coeff) > 1e-12
+    if abs(coeff) > 1e-8
         term = [(p, true), (q, true), (r, false), (s, false)]
         #  println("a$p a$q a$r a$s $term $coeff")
         fop = FermionOperator(term, coeff)
@@ -179,6 +178,7 @@ end
 for coeff in qubit_coeffs
     display(coeff)
 end
+
 println("Total Terms are : ", length(qubit_paulis))
 println("Total Coeff are : ", length(qubit_coeffs))
 
@@ -194,12 +194,12 @@ function combine_pauli_terms(generators::Vector{Pauli{N}}, parameters::Vector{Co
     end
 
     #filter out negligible terms
-    #filtered = Dict{Pauli{N}, ComplexF64}()
-    #for (p, c) in combined
-    #    if abs(real(c)) > 1e-8 || abs(imag(c)) > 1e-8
-    #        filtered[p] = c
-    #    end
-    #end
+    filtered = Dict{Pauli{N}, ComplexF64}()
+    for (p, c) in combined
+        if abs(real(c)) > 1e-8 || abs(imag(c)) > 1e-8
+            filtered[p] = c
+        end
+    end
     return combined #filtered
 end
 
@@ -210,3 +210,23 @@ for (pauli, coeff) in sort(collect(ham_dict); by=x->string(x[1]))
 end
 
 println("Final number of operators: ", length(ham_dict))
+
+"""
+ Compute some expectation value witht he obtained Hamiltonian
+ <ket_0 | H_qubit | ket_0>
+"""
+function compute_expectation(ham_dict, ket, bra)
+    expval = 0.0 + 0.0im
+    for (pauli, coeff) in ham_dict
+        v_new = pauli * ket
+        display(v_new)
+        braket = bra * v_new[2]
+        expval += coeff * v_new[1] * braket
+    end
+    return expval
+end
+
+ket = Ket(N, 3) #HF STATE
+bra = ket' 
+expectation = compute_expectation(ham_dict, ket, bra)
+println("Expectation value $expectation")

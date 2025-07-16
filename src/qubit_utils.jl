@@ -38,32 +38,19 @@ function qubit_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array
 
     # One-body terms
     for p in 1:N
-        for q in p:N  # only p ≤ q
+        for q in 1:N
             hval = h1[p, q]
-            if iszero(hval)
-                continue
-            end
-
-            if p == q
+            if abs(hval) > 1e-7
                 a_dag = JW_creator_mapping(N, p)
                 a = JW_annihilator_mapping(N, q)
                 one_e_term += hval * (a_dag * a)
-            else
-                # h1[p, q] == h1[q, p] if real symmetric
-                a_dag_p = JW_creator_mapping(N, p)
-                a_q = JW_annihilator_mapping(N, q)
-                a_dag_q = JW_creator_mapping(N, q)
-                a_p = JW_annihilator_mapping(N, p)
-                
-                term = a_dag_p * a_q + a_dag_q * a_p
-                one_e_term += hval * term
             end
         end
     end
 
     # Two-body terms
     for p in 1:N, q in 1:N, r in 1:N, s in 1:N
-        coeff = h2[p,q,r,s] - h2[p,q,s,r]
+        coeff = h2[p,q,r,s] - h2[p,q,s,r] #antisymmetry
         abs(coeff) > 1e-10 || continue
 
         A = JW_creator_mapping(N, p) *
@@ -76,25 +63,25 @@ function qubit_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array
                JW_annihilator_mapping(N, q) *
                JW_annihilator_mapping(N, p)
 
-        two_e_term += 0.125*coeff * (A + A_hc)
+        two_e_term += -0.25* coeff * (A + A_hc)
     end
     
 
     # Add constant term h0 (identity)
-    if abs(h0) > 1e-8
+    if abs(h0) > 1e-10
         push!(generators, Pauli(N))  # Identity
         push!(parameters, h0)
     end
 
     # Collect Pauli terms
     for (pauli, coeff) in one_e_term
-        abs(coeff) > 1e-7 || continue
+        abs(coeff) > 1e-10 || continue
         push!(generators, Pauli(pauli))
         push!(parameters, coeff)
     end
 
     for (pauli, coeff) in two_e_term
-        abs(coeff) > 1e-7 || continue
+        abs(coeff) > 1e-10 || continue
         push!(generators, Pauli(pauli))
         push!(parameters, coeff)
     end
