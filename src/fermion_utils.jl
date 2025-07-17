@@ -47,6 +47,88 @@ function get_spin_orbital_tensors(hcore::Matrix{Float64}, eri::Array{Float64,4})
 end
 
 """
+ Spin selection rules: 
+ A term like a^_p*a_q or a^_p*a^_q*a_r*a_s should vanish inless it conserves spin.
+ - One-body terms only allow p, q with same spin
+ - Two-body terms are non zero only if: 
+    Number of creation = number of annihilation operators of each spin
+    for example 2 creation (1alpha + 1beta) and 2 annihilation (1alpha + 1 beta) -> are ok.
+"""
+function spin(p)
+    return isodd(p) ? :α : :β
+end
+
+function spin_conserving(op::FermionOperator)
+    for (term, _) in op.terms
+        n_α = 0
+        n_β = 0
+        for op in term
+            if isodd(op.mode)  # Fermionic mode 1 is spin-up (α), 2 is spin-down (β), etc.
+                n_α += op.creation ? 1 : -1
+            else
+                n_β += op.creation ? 1 : -1
+            end
+        end
+        if n_α != 0 || n_β != 0
+            return false
+        end
+    end
+    return true
+end
+
+"""
+  Fermionic Hamiltonian
+  Constructs the fermionic hamiltonian from 
+  h0 (nuclear repulsion term)
+  h1 (one-body spinorbital tensor)
+  h2 (two-body spinorbital tensor)
+  Return vectors with the operators in the FermionOperator form
+"""
+function fermionic_hamiltonian(h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4})
+    # One-body terms: a†_p a_q
+    h_one_part = Vector{FermionOperator}()
+    h_two_part = Vector{FermionOperator}()
+
+    fzero = FermionOperator(ComplexF64(h0))
+    display(fzero)
+
+    n = size(h1, 1)
+    for p in 1:n
+        for q in 1:n
+            coeff = h1[p, q]
+            if abs(coeff) > 1e-7
+                term = [(p, true), (q, false)]  # 1-based indexing
+                fop = FermionOperator(term, coeff)
+
+                if !spin_conserving(fop)
+                    #println("This term is not spin_conserving: $term")
+                    continue
+                end
+            #display(fop)
+            push!(h_one_part,fop)
+            end
+        end
+    end
+    
+    # Two-body terms: a†_p a†_q a_r a_s
+    # Working in the Physiscist notation to match with OpenFermion
+    for p in 1:n, q in 1:n, r in 1:n, s in 1:n
+        coeff = h2[p, q, r, s]
+        if abs(coeff) > 1e-10
+            term = [(p, true), (q, true), (r, false), (s, false)]
+            fop2 = FermionOperator(term, coeff)
+            if !spin_conserving(fop2)
+                #println("This term is not spin_conserving: $term")
+                continue
+            end
+            #display(fop)
+            push!(h_two_part,fop2)
+        end
+    end
+    return h_one_part, h_two_part
+end
+
+"""
  Permutation symmetries satisfied by a rank-4 tensor of real two-body
  integrals in chemist's index order as depictedin order of appearance
  in Molecular Electronic Structure Theory by Helgaker et. al (MEST)

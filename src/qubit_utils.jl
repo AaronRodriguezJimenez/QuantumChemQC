@@ -23,6 +23,28 @@ function JW_annihilator_mapping(N, j::Int64)
     return a_j
 end
 
+function combine_pauli_terms(generators::Vector{Pauli{N}}, parameters::Vector{ComplexF64}) where N
+    combined = Dict{Pauli{N}, ComplexF64}()
+
+    for (p, coeff) in zip(generators, parameters)
+        if haskey(combined, p)
+            combined[p] += coeff
+        else
+            combined[p] = coeff
+        end
+    end
+
+    #filter out negligible terms
+    filtered = Dict{Pauli{N}, ComplexF64}()
+    for (p, c) in combined
+        if abs(real(c)) > 1e-8 || abs(imag(c)) > 1e-8
+            filtered[p] = c
+        end
+    end
+    return combined #filtered
+end
+
+
 """
  The following is the generator function that can produce the qubit Hamiltoinan
     in the JW representation, as input it uses the resulting molecular orbitals

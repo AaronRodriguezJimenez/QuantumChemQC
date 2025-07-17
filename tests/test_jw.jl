@@ -82,77 +82,20 @@ h1, h2 = QuantumChemQC.get_spin_orbital_tensors(mo_hcore, mo_eris)
 # Note: current implementation does not yield the interleaved version of the fermionic 
 # hamiltonian. Matching with the default version from OpenFermion.
 
-
-"""
- Spin selection rules: 
- A term like a^_p*a_q or a^_p*a^_q*a_r*a_s should vanish inless it conserves spin.
- - One-body terms only allow p, q with same spin
- - Two-body terms are non zero only if: 
-    Number of creation = number of annihilation operators of each spin
-    for example 2 creation (1alpha + 1beta) and 2 annihilation (1alpha + 1 beta) -> are ok.
-"""
-function spin(p)
-    return isodd(p) ? :α : :β
-end
-
-function spin_conserving(op::FermionOperator)
-    for (term, _) in op.terms
-        n_α = 0
-        n_β = 0
-        for op in term
-            if isodd(op.mode)  # Fermionic mode 1 is spin-up (α), 2 is spin-down (β), etc.
-                n_α += op.creation ? 1 : -1
-            else
-                n_β += op.creation ? 1 : -1
-            end
-        end
-        if n_α != 0 || n_β != 0
-            return false
-        end
-    end
-    return true
-end
-
 """
  Now we can construc the fermionic hamiltonian as
 """
-# One-body terms: a†_p a_q
-println("  ")
-fzero = FermionOperator(ComplexF64(h0))
-display(fzero)
+H_fermion1, H_fermion2 = QuantumChemQC.fermionic_hamiltonian(h0, h1, h2)
 
-n = size(h1, 1)
-for p in 1:n
-    for q in 1:n
-        coeff = h1[p, q]
-        if abs(coeff) > 1e-7
-            term = [(p, true), (q, false)]  # 1-based indexing
-            #  println("a$p a$q $term $coeff")
-            fop = FermionOperator(term, coeff)
-            if !spin_conserving(fop)
-                println("This term is not spin_conserving: $term")
-                continue
-            end
-            display(fop)
-        end
-    end
+println(" ")
+println(" The Fermionic operator is")
+println(" ")
+for term in H_fermion1
+    display(term)
 end
 
-
-# Two-body terms: a†_p a†_q a_r a_s
-# Working in the Physiscist notation to match with OpenFermion
-for p in 1:n, q in 1:n, r in 1:n, s in 1:n
-    coeff = h2[p, q, r, s]
-    if abs(coeff) > 1e-8
-        term = [(p, true), (q, true), (r, false), (s, false)]
-        #  println("a$p a$q a$r a$s $term $coeff")
-        fop = FermionOperator(term, coeff)
-        if !spin_conserving(fop)
-            println("This term is not spin_conserving: $term")
-            continue
-        end
-        display(fop)
-    end
+for term in H_fermion2
+    display(term)
 end
 
 """
@@ -170,49 +113,23 @@ end
 N = size(h1, 1)
 qubit_paulis, qubit_coeffs = QuantumChemQC.qubit_hamiltonian(N, h0, h1, h2) 
 
-println(" Qubit Operator Paulis")
-for term in qubit_paulis
-    display(term)
-end
+#println("Total Terms are : ", length(qubit_paulis))
+#println("Total Coeff are : ", length(qubit_coeffs))
 
-for coeff in qubit_coeffs
-    display(coeff)
-end
+println(" ")
+println(" The Qubit operator is")
+println(" ")
 
-println("Total Terms are : ", length(qubit_paulis))
-println("Total Coeff are : ", length(qubit_coeffs))
-
-function combine_pauli_terms(generators::Vector{Pauli{N}}, parameters::Vector{ComplexF64}) where N
-    combined = Dict{Pauli{N}, ComplexF64}()
-
-    for (p, coeff) in zip(generators, parameters)
-        if haskey(combined, p)
-            combined[p] += coeff
-        else
-            combined[p] = coeff
-        end
-    end
-
-    #filter out negligible terms
-    filtered = Dict{Pauli{N}, ComplexF64}()
-    for (p, c) in combined
-        if abs(real(c)) > 1e-8 || abs(imag(c)) > 1e-8
-            filtered[p] = c
-        end
-    end
-    return combined #filtered
-end
-
-ham_dict = combine_pauli_terms(qubit_paulis, qubit_coeffs)
+ham_dict = QuantumChemQC.combine_pauli_terms(qubit_paulis, qubit_coeffs)
 
 for (pauli, coeff) in sort(collect(ham_dict); by=x->string(x[1]))
     println(@sprintf("%+.6f %+.6fim | %s", real(coeff), imag(coeff), string(pauli)))
 end
 
-println("Final number of operators: ", length(ham_dict))
+println("Total number of operators: ", length(ham_dict))
 
 """
- Compute some expectation value witht he obtained Hamiltonian
+ Compute Hartree-Fock expectation value with the qubit Hamiltonian
  <ket_0 | H_qubit | ket_0>
 """
 function compute_expectation(ham_dict, ket, bra)
