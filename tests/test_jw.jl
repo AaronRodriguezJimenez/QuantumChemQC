@@ -136,7 +136,7 @@ function compute_expectation(ham_dict, ket, bra)
     expval = 0.0 + 0.0im
     for (pauli, coeff) in ham_dict
         v_new = pauli * ket
-        display(v_new)
+        #display(v_new)
         braket = bra * v_new[2]
         expval += coeff * v_new[1] * braket
     end
@@ -146,4 +146,8 @@ end
 ket = Ket(N, 3) #HF STATE
 bra = ket' 
 expectation = compute_expectation(ham_dict, ket, bra)
+println(" ")
+println(" HF initial state:")
+display(ket)
+println(" ")
 println("Expectation value $expectation")
