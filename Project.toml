@@ -12,6 +12,7 @@ PauliOperators = "be646426-f34c-4536-b1d4-a45a9633e6db"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
+UnitaryPruning = "944e96c2-c6c9-4ba0-b69d-e026960c3e5f"
 
 [compat]
 FileIO = "1.17.0"

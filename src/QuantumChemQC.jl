@@ -11,6 +11,7 @@ using StaticArrays
 using IterTools
 
 using PauliOperators  # v2
+using UnitaryPruning
 
 include("io.jl")
 include("integrals.jl")

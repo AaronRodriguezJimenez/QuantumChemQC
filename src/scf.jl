@@ -98,7 +98,7 @@ function scf(
         update!(diis, F, residual)
     end
 
-    #@error "SCF failed after $(max_cycle) cycles"
+    @error "SCF failed after $(max_cycle) cycles"
 end
 
 struct SCF
@@ -172,4 +172,20 @@ function electron_energy(
     )
     Eel, P, e, C = scf(S, T, V, I, P0, N)
     return Eel
+end
+
+"""
+ Compute molecular integrals from atomic integrals
+ Transform Atomic integrals into Molecular integrals
+ two-body coefficients are comptued following the convention from OpenFermion:
+ h[p,q,r,s] = (ps|qr)
+"""
+function ao2mo_coefficients(C::Matrix{Float64}, ao_hcore::Matrix{Float64}, ao_eris::AbstractArray{Float64,4})
+    #C = scf_obj.C # MO coeffs
+    mo_hcore = C' * ao_hcore * C 
+    mo_eris = Array{Float64, 4}(undef, size(ao_eris)...)
+
+    # Openfermion convention:
+    @tullio mo_eris[p,q,r,s] := C[μ, p] * C[λ, s] * C[ν, q] * C[σ, r] * ao_eris[μ, λ, ν, σ]
+    return mo_hcore, mo_eris
 end

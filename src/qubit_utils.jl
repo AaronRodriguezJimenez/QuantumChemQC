@@ -23,6 +23,9 @@ function JW_annihilator_mapping(N, j::Int64)
     return a_j
 end
 
+"""
+ Returns a dictionary with the combined terms.
+"""
 function combine_pauli_terms(generators::Vector{Pauli{N}}, parameters::Vector{ComplexF64}) where N
     combined = Dict{Pauli{N}, ComplexF64}()
 
@@ -44,6 +47,31 @@ function combine_pauli_terms(generators::Vector{Pauli{N}}, parameters::Vector{Co
     return combined #filtered
 end
 
+"""
+ Returns the combined terms as resulting ordered vectors of generators and coefficients.
+"""
+function combine_terms(generators::Vector{Pauli{N}}, parameters::Vector{ComplexF64}) where N
+    combined = Dict{Pauli{N}, ComplexF64}()
+    geners = Vector{Pauli{N}}()
+    params = Vector{Float64}()
+
+    for (p, coeff) in zip(generators, parameters)
+        if haskey(combined, p)
+            combined[p] += coeff
+        else
+            combined[p] = coeff
+        end
+    end
+
+    #filter out negligible terms
+    for (p, c) in combined
+        if abs(real(c)) > 1e-8 || abs(imag(c)) > 1e-8
+            push!(geners, p)
+            push!(params, c) 
+        end
+    end
+    return geners, params
+end
 
 """
  The following is the generator function that can produce the qubit Hamiltoinan

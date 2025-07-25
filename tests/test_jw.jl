@@ -17,6 +17,8 @@ mol = """
 """
 
 #Iitialize molecule
+# bset - basis set object from GaussianBasis.
+# p    - ENV parameters used for the Quantum Chemistry functions.
 bset, p = QuantumChemQC.molecule(mol, "sto-3g", spherical = false)
 scf_obj = QuantumChemQC.SCF(mol, bset, p)
 
@@ -50,10 +52,10 @@ mo_eris = Array{Float64, 4}(undef, size(ao_eris)...)
 
 # If needed, we can convert between chemist and physicis notations by transposing axes:
 #ao_eris_phys = permutedims(ao_eris_chem, (1,3,2,4))  # chemist → physicist
-println("One body integrls (H_core) in MO representation: ")
-display(mo_hcore)
-println("Two body integrals in MO representation: ")
-display(mo_eris)
+#println("One body integrals (H_core) in MO representation: ")
+#display(mo_hcore)
+#println("Two body integrals in MO representation: ")
+#display(mo_eris)
 
 """
  In some cases depending on the storing of the two electron integrals, some codes 
