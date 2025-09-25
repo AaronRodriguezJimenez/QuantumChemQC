@@ -2,15 +2,10 @@ module QuantumChemQC
 
 #Module for creating quantum chemistry hamiltonians
 #and use them for quantum computing purposes.
-using Tullio
-using LinearAlgebra
-using SpecialFunctions
-using GaussianBasis
-using FileIO
-using StaticArrays
-using IterTools
 
-using PauliOperators  # v2
+using Tullio, LinearAlgebra, SpecialFunctions, GaussianBasis,
+      FileIO, StaticArrays, IterTools#, Printf
+using PauliOperators   # v2
 using UnitaryPruning
 
 include("io.jl")
@@ -23,6 +18,13 @@ include("type_FermionOp.jl")
 include("fermion_utils.jl")
 include("qubit_utils.jl")
 
-export FermionOp
-export FermionOperator
+include("adapt/ADAPT_PP.jl")   # defines submodule
+using .ADAPT_PP                 # make it accessible inside QuantumChemQC
+
+include("molecules.jl")
+using .Molecules
+
+export FermionOp, FermionOperator, ADAPT_PP  
+export Molecules
+
 end # module QuantumChemQC

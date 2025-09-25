@@ -20,7 +20,7 @@ mol = """
 #Iitialize molecule
 # bset - basis set object from GaussianBasis.
 # p    - ENV parameters used for the Quantum Chemistry functions.
-bset, p = QuantumChemQC.molecule(mol, "3-21g", spherical = false)
+bset, p = QuantumChemQC.molecule(mol, "sto-3g", spherical = false)
 scf_obj = QuantumChemQC.SCF(mol, bset, p)
 
 # Atomic integrals
