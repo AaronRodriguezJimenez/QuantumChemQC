@@ -19,8 +19,6 @@ include("fermion_utils.jl")
 include("qubit_utils.jl")
 include("hamiltonians.jl")
 
-include("adapt/ADAPT_PP.jl")   # defines submodule
-using .ADAPT_PP                 # make it accessible inside QuantumChemQC
 
 include("lattices/Lattices.jl")  # defines submodule
 using .Lattices                  # make it accessible inside QuantumChemQC
@@ -28,7 +26,7 @@ using .Lattices                  # make it accessible inside QuantumChemQC
 include("molecules.jl")
 using .Molecules
 
-export FermionOp, FermionOperator, ADAPT_PP  
+export FermionOp, FermionOperator
 export Molecules, Lattices
 export LatticeBond, Lattice
 export lattice2graph, dec2bin, bin2dec, bin2bonds!
