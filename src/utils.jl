@@ -78,3 +78,7 @@ function Z_to_symbol(Z)
 
     return dict[Z]
 end
+
+function coeff_clip!(ps::PauliSum{N}; thresh=1e-16) where {N}
+    filter!(p->abs(p.second) > thresh, ps)
+end
