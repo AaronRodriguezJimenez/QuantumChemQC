@@ -4,7 +4,7 @@ module QuantumChemQC
 #and use them for quantum computing purposes.
 
 using Tullio, LinearAlgebra, SpecialFunctions, GaussianBasis,
-      FileIO, StaticArrays, IterTools, Graphs#, Printf
+      FileIO, StaticArrays, IterTools, Graphs, Printf
 using PauliOperators   # v2
 using UnitaryPruning
 using DBF
@@ -19,17 +19,17 @@ include("type_FermionOp.jl")
 include("fermion_utils.jl")
 include("qubit_utils.jl")
 include("hamiltonians.jl")
-
-
-include("lattices/Lattices.jl")  # defines submodule
-using .Lattices                  # make it accessible inside QuantumChemQC
-
+include("qc_utils.jl") #submodule QCUtils
 include("molecules.jl")
+include("lattices/Lattices.jl")  # defines submodule
+
+using .QCUtils
+using .Lattices                  # make it accessible inside QuantumChemQC
 using .Molecules
 
 export FermionOp, FermionOperator
-export Molecules, Lattices
-export LatticeBond, Lattice
+export Molecules
+export Lattices, LatticeBond, Lattice
 export lattice2graph, dec2bin, bin2dec, bin2bonds!
 export square_lattice
 

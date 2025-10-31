@@ -225,28 +225,3 @@ function H2_hamiltonian(d)
 
 return H, N;
 end
-
-function get_qubit_hamiltonian(scf_obj)
-    # Atomic integrals
-    ao_hcore = scf_obj.T + scf_obj.V
-    ao_eris = scf_obj.I
-
-    # Transform Atomic integrals into Molecular integrals
-    C = scf_obj.C # MO coeffs
-    mo_hcore , mo_eris = QuantumChemQC.ao2mo_coefficients(C, ao_hcore, ao_eris)
-
-    # Spinorbital tensors
-    core =0 
-    h0 = scf_obj.Enuc + core 
-    h1, h2 = QuantumChemQC.get_spin_orbital_tensors(mo_hcore, mo_eris)
-    N = size(h1, 1)
-    qubit_paulis, qubit_coeffs = QuantumChemQC.qubit_hamiltonian(N, h0, h1, h2) 
-
-    gen, coeff = QuantumChemQC.combine_terms(qubit_paulis, qubit_coeffs)
-
-    H = PauliSum(N)
-    H = foldl(+, (c*p for (p,c) in zip(gen, coeff)); init=PauliSum(N))
-    coeff_clip!(H)
-
-return H, N;
-end
