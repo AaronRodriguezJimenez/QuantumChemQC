@@ -7,6 +7,7 @@ using Tullio, LinearAlgebra, SpecialFunctions, GaussianBasis,
       FileIO, StaticArrays, IterTools, Graphs#, Printf
 using PauliOperators   # v2
 using UnitaryPruning
+using DBF
 
 include("io.jl")
 include("integrals.jl")
