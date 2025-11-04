@@ -8,7 +8,7 @@ println("Testing H (2x2x2) cube at 0.74 Angstroms")
 println("= = = = = = = = = = = = = = = = = = = = =")
 
 # Build a cube of H atoms using the Molecules module
-mol3 = Molecules.build_h_cube_mol(0.74, 2)  # 2x2x2
+mol3 = QuantumChemQC.build_h_cube_mol(0.74, 2)  # 2x2x2
 println(mol3)
 #Iitialize molecule
 
