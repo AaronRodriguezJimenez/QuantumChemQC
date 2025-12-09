@@ -18,21 +18,26 @@ function run()
     Hfcns = pyimport("pyqctools.ham_fcns")
 
 
-    # Get geometry for H2O molecule and define parameters
-    geom = pq.geometries.H2O()
+    # Get geometry for H2 molecule and define parameters
+    geom = pq.geometries.H2()
+    #geom = pq.geometries.LiH()
+    #geom = pq.geometries.BeH2()
+    #geom = pq.geometries.H2O()
+#    geom = pq.ethylene()
 
-    println("Water geometry from pyqctools:", geom)
+    println("Molecule geometry from pyqctools:", geom)
     
-    bas = "sto-3g"
+    bas = "cc-pVTZ" #"sto-3g"
     mult = 1
     ch = 0
     H_op, N_total = Hfcns.get_hamiltonian(geom, bas, mult, ch, print_table=false)
-    println("Hamiltonian operator from pyqctools:", H_op)
+    #println("Hamiltonian operator from pyqctools:", H_op)
     println("Number of qubits:", N_total)
 
     # Transform to qiskit format
     Hqiskit = Hfcns.jw_to_sparse_pauli_op(H_op)
-    println("Hamiltonian in Qiskit format:", Hqiskit)
+    #println("Hamiltonian in Qiskit format:", Hqiskit)
+    println("Number of Pauli terms:", length(Hqiskit))
 
     # Construct the QUBIT Hamiltonian with PauliOperators
     gens = Vector{PyObject}()
@@ -49,16 +54,16 @@ function run()
         H += real(coeff) * Pauli(pstring)
     end
 
-    println("Hamiltonian in PauliOperators format:", H)
-    display(H)
-
+    #println("Hamiltonian in PauliOperators format:", H)
+    #display(H)
+    #println("N_total = ", N_total)
     return H, N_total
 end
 
 # Now use DBF to compute ground state energy
 function dbf_gstate(H, N)
 
-    Nparticles = 10 # total electrons in H2O
+    Nparticles = 2 # total electrons in molecule
     ket, occ = DBF.particle_ket(N, Nparticles, 0.0; mode=:first)
     display(ket)
 
@@ -68,7 +73,7 @@ function dbf_gstate(H, N)
             H = Pauli(N, X=[i]) * H * Pauli(N, X=[i])
         end
     end
-    
+
     H0 = deepcopy(H)
     #Hmat = Matrix(H)
     #evals = eigvals(Hmat)
@@ -77,51 +82,31 @@ function dbf_gstate(H, N)
     ψ = Ket([0 for i in 1:N])
     display(ψ)
 
-    e0 = expectation_value(H,ψ)
-    @printf(" Reference = %12.8f\n", e0)
+    e1 = expectation_value(H,ψ)
+    @printf(" Reference = %12.8f\n", e1)
 
     g = Vector{PauliBasis{N}}([]) 
     θ = Vector{Float64}([]) 
 
     println("\n ########################")
-    @time H, g, θ = DBF.groundstate_diffeq_test(H0, ψ, n_body=3, 
-                                verbose=1, 
-                                max_iter=1000, conv_thresh=1e-2, 
-                                evolve_coeff_thresh=1e-2,
-                                grad_coeff_thresh=1e-4,
-                                stepsize=.01)
+    res = DBF.dbf_groundstate(H0, ψ,
+                     max_iter=400, conv_thresh=1e-4, 
+                    evolve_coeff_thresh=1e-3,
+                    grad_coeff_thresh=1e-10,
+                    energy_lowering_thresh=1e-10)                         
     
-    # @save "out_$(i).jld2" N ψ H0 H g θ
+    H = res["hamiltonian"]
+    gi = res["generators"]
+    θi = res["angles"]    
+
+    e2 = real(expectation_value(H,ψ))
+    @printf("<H> = %12.8f <U'HU> = %12.8f \n", e1, e2)
+
+    # Diplay evolved Hamiltonian
+    #println("\n Evolved Hamiltonian:")
+    #display(H)
+                    
     return
-
-    println("\n Now reroptimize with higher accuracy:")
-    @show length(θ)
-    Ht = deepcopy(H0)
-    err = 0
-    ecurr = expectation_value(Ht,ψ)
-    @printf(" Initial energy: %12.8f %8i\n", ecurr, length(Ht))
-    for (i,gi) in enumerate(g)
-            
-        θj, costi = DBF.optimize_theta_expval_test(Ht, gi, ψ, verbose=0)
-        Ht = DBF.evolve(Ht, gi, θj)
-        θ[i] = θj
-        
-        e1 = expectation_value(Ht,ψ)
-        DBF.coeff_clip!(Ht, thresh=1e-5)
-        e2 = expectation_value(Ht,ψ)
-
-        err += e2 - e1
-        if i%100 == 0
-            @printf(" Error: %12.8f\n", err)
-            e0, e2 = DBF.pt2(Ht, ψ)
-            @printf(" E0 = %12.8f E2 = %12.8f EPT2 = %12.8f \n", e0, e2, e0+e2)
-            e0, e, v, basis = DBF.cepa(Ht, ψ, thresh=1e-6, tol=1e-2, verbose=0)
-            e0, e, v, basis = DBF.fois_ci(Ht, ψ, thresh=1e-6, tol=1e-2, verbose=0)
-        end
-    end    
-    ecurr = expectation_value(Ht,ψ)
-    @printf(" ecurr %12.8f err %12.8f %8i\n", ecurr, err, length(Ht))
-    return 
 end
 
 H, N_total = run()

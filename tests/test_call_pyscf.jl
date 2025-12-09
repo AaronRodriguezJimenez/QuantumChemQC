@@ -32,16 +32,14 @@ h0 = mol_H2.h0
 h1 = mol_H2.h1
 h2 = mol_H2.h2
 
-qubit_paulis, qubit_coeffs = QuantumChemQC.qubit_hamiltonian(N, h0, h1, h2) 
-
+# Here we construct the qubit Hamiltonian using Jordan-Wigner mapping
+# this can be done more efficiently if instrad we construct the PauliSum Hamiltonian directly
+# and clip it.
+#qubit_paulis, qubit_coeffs = QuantumChemQC.qubit_hamiltonian(N, h0, h1, h2) 
+H  = QuantumChemQC.PauliSum_hamiltonian(N, h0, h1, h2)
 println(" ")
 println(" The Qubit operator is")
 println(" ")
+display(H)
 
-ham_dict = QuantumChemQC.combine_pauli_terms(qubit_paulis, qubit_coeffs)
-
-for (pauli, coeff) in sort(collect(ham_dict); by=x->string(x[1]))
-    println(@sprintf("%+.6f %+.6fim | %s", real(coeff), imag(coeff), string(pauli)))
-end
-
-println("Total number of operators: ", length(ham_dict))
+println("Total number of operators: ", length(H))

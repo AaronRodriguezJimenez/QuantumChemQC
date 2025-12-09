@@ -3,6 +3,30 @@
 """
 
 """
+    Clip based on coefficient magnitude.
+"""
+function coeff_clip!(ps::KetSum{N}; thresh=1e-16) where {N}
+    return filter!(p->abs(p.second) > thresh, ps)
+end
+
+function coeff_clip!(ps::PauliSum{N}; thresh=1e-16) where {N}
+    return filter!(p->abs(p.second) > thresh, ps)
+
+end
+
+"""
+    Clip based on Pauli weight.
+    Performs the pruning by removing all terms with weight > max_weight.
+"""
+function weight(p::PauliBasis) 
+    return count_ones(p.x | p.z)
+end
+
+function weight_clip!(ps::PauliSum{N}, max_weight::Int) where {N}
+    return filter!(p->weight(p.first) <= max_weight, ps)
+end
+
+"""
  Under the Symplectic representation, operators are mapped as follows:
         a_j^dagger -> Z_0 .. Z_{j-1} (X_j - iY_j) / 2
         a_j        -> Z_0 .. Z_{j-1} (X_j + iY_j) / 2
@@ -162,4 +186,48 @@ function get_qubit_hamiltonian(scf_obj)
     coeff_clip!(H)
 
 return H, N;
+end
+
+function PauliSum_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4})
+    H = PauliSum(N, Float64)
+    #one_e_term = PauliSum(N, Float64)
+    #two_e_term = PauliSum(N, Float64)
+    
+    # H0 term (identity)
+    H += h0 * Pauli(N)
+    
+    # One-body terms
+    for p in 1:N
+        for q in 1:N
+            hval = h1[p, q]
+            if abs(hval) > 1e-7
+                a_dag = JW_creator_mapping(N, p)
+                a = JW_annihilator_mapping(N, q)
+                #one_e_term += hval * (a_dag * a)
+                H += hval * (a_dag * a)
+            end
+        end
+    end
+
+    # Two-body terms
+    for p in 1:N, q in 1:N, r in 1:N, s in 1:N
+        coeff = h2[p,q,r,s] - h2[p,q,s,r] #antisymmetry
+        abs(coeff) > 1e-10 || continue
+
+        A = JW_creator_mapping(N, p) *
+            JW_creator_mapping(N, q) *
+            JW_annihilator_mapping(N, s) *
+            JW_annihilator_mapping(N, r)
+
+        A_hc = JW_creator_mapping(N, r) *
+               JW_creator_mapping(N, s) *
+               JW_annihilator_mapping(N, q) *
+               JW_annihilator_mapping(N, p)
+
+        #two_e_term += -0.25* coeff * (A + A_hc)
+        H += -0.25* coeff * (A + A_hc)
+    end
+
+    coeff_clip!(H)
+    return H
 end
