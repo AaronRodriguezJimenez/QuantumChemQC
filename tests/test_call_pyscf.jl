@@ -1,7 +1,8 @@
 using QuantumChemQC
 using Printf
 
-geom_H2 = Molecules.H2_geometry(0.74)
+# The following follows conventions in QuantumChemQC
+geom_H2 = Molecules.H2_geometry(0.7414)
 println("Molecule Geometry: ", geom_H2)
 
 geom_H2 = [

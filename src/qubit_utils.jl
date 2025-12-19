@@ -2,7 +2,7 @@
  # # # Qubit utilities
 """
 
-"""
+#="""
     Clip based on coefficient magnitude.
 """
 function coeff_clip!(ps::KetSum{N}; thresh=1e-16) where {N}
@@ -25,6 +25,7 @@ end
 function weight_clip!(ps::PauliSum{N}, max_weight::Int) where {N}
     return filter!(p->weight(p.first) <= max_weight, ps)
 end
+=#
 
 """
  Under the Symplectic representation, operators are mapped as follows:
