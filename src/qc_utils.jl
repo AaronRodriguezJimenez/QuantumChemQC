@@ -262,10 +262,6 @@ function projector(n::Integer, m::Integer, m0::Integer)
 end
 
 
-
-
-
-
 """
     expectation(A::Matrix{ComplexF64}, ψ::Vector{ComplexF64})
 

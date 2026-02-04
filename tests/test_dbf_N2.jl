@@ -70,11 +70,39 @@ function occvec(k::Union{Ket{N}, Bra{N}}) where N
     [ get_bit(k, i) for i in 1:N ]
 end
 
+"""
+Return (ket, occ, kidx, Emin) where kidx has exactly Nparticles occupied bits.
+Scans all bitstrings of length N with popcount == Nparticles.
+"""
+function reference_state_fixed_particles(H::PauliSum{N}, Nparticles::Int64) where N
+    @assert 0 ≤ Nparticles ≤ N
+
+    best_E = Inf
+    best_k = -1
+
+    for k in 0:(2^N - 1)  # IMPORTANT: 0-based bit patterns
+        if count_ones(k) == Nparticles
+            ψ = Ket{N}(k)
+            E = real(expectation_value(H, ψ))
+            if E < best_E
+                best_E = E
+                best_k = k
+            end
+        end
+    end
+
+    ket = Ket{N}(best_k)
+    occ = occvec(ket)
+    return ket, occ, best_k, best_E
+end
+
+
 # Now use DBF to compute ground state energy
 function dbf_gstate(H, N)
 
     Nparticles = 14 # total electrons in molecule
-    ket, occ = DBF.particle_ket(N, Nparticles, 0.0; mode=:first)
+    #ket, occ = DBF.particle_ket(N, Nparticles, 0.0; mode=:first)
+    ket, occ, _, _ = reference_state_fixed_particles(H, Nparticles)
     
     #kidx = argmin([real(expectation_value(H,Ket{N}(ψi))) for ψi in 1:2^N])
     #ket = Ket{N}(kidx)
