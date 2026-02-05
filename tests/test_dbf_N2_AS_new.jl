@@ -32,7 +32,7 @@ function run()
     N_spin_orbitals = size(H1,1)  # number of spin orbitals
 
     #H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2)
-    @time H = QuantumChemQC.molecular_hamiltonian(N_spin_orbitals, data_path)
+    @time H = QuantumChemQC.molecular_hamiltonian(N_spin_orbitals, data_path, NOI=true)
     return H
 end
 

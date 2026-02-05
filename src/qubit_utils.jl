@@ -120,7 +120,7 @@ function molecular_hamiltonian_uhf(N_spin_orbitals::Int,
     return H
 end
 
-function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10)
+function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10, NOI=false)
     # 1. Determine Spatial Dimensions
     N_spatial = div(N_spin_orbitals, 2)
     println("Building RHF Hamiltonian Directly (Memory Efficient)...")
@@ -130,7 +130,13 @@ function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10)
     # h1 is N x N
     # h2 is N x N x N x N
     H_op = npzread(path)
-    H0 = H_op["hc"][1]
+
+    if NOI #Accept III... term (not necessary for AS calculations)
+        H0 = H_op["hc"][1]
+    else
+        H0 = 0 #So this will be skipped
+    end
+    
     h1_spatial = H_op["h1e"]
     h2_spatial = H_op["h2e"]
 
