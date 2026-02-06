@@ -29,10 +29,10 @@ function run()
     println("H2 shape: ", size(H2))
     println(typeof(H2))
 
-    N_spin_orbitals = size(H1,1)  # number of spin orbitals
-
+    Norbs = size(H1,1)  # number of spatial orbitals
+    
     #H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2)
-    @time H = QuantumChemQC.molecular_hamiltonian(N_spin_orbitals, data_path, NOI=true)
+    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=false)
     return H
 end
 
@@ -94,7 +94,9 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
     #kidx = argmin([real(expectation_value(H, Ket{N}(ψi))) for ψi in 1:2^N])
     #ket = Ket{N}(kidx)
     #occ = occvec(ket)
-    ket, occ, kidx  = string_to_ket("1111111111000000") #Leading CAS configuration
+
+    #ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g (block)
+    ket, occ, kidx  = string_to_ket("1111111111000000") #Leading CAS/sto3g (interleaved)
 
     # Transform H to make |000> the most stable bitstring
     for i in 1:N

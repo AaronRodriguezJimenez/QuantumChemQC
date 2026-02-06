@@ -120,9 +120,16 @@ function molecular_hamiltonian_uhf(N_spin_orbitals::Int,
     return H
 end
 
-function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10, NOI=false)
+"""
+ Fast molecular Hamiltonian (PauliSum) computed from Molecular Integrals in chemist notation.
+ N_spin_orbitals :: Number of spinorbitals is always the double of the number of MOs (N_spatial).
+ Path :: Path to the npz file which stores the integrals.
+ NOI :: Allow to disable IIII.. constant term (treated as zero when NOI is true)
+ block :: Structure of the qubit hamiltonian by default, if block=false, it creates an interleaved hamiltonian.
+"""
+function molecular_hamiltonian(N_spatial::Int, path::String; tol=1e-10, NOI=true, block=true)
+    N_spin_orbitals = 2*N_spatial
     # 1. Determine Spatial Dimensions
-    N_spatial = div(N_spin_orbitals, 2)
     println("Building RHF Hamiltonian Directly (Memory Efficient)...")
     println("  -> System: $N_spatial Spatial Orbitals ($N_spin_orbitals Spin Orbitals)")
 
@@ -132,11 +139,11 @@ function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10, NO
     H_op = npzread(path)
 
     if NOI #Accept III... term (not necessary for AS calculations)
-        H0 = H_op["hc"][1]
-    else
         H0 = 0 #So this will be skipped
+    else
+        H0 = H_op["hc"][1] 
     end
-    
+
     h1_spatial = H_op["h1e"]
     h2_spatial = H_op["h2e"]
 
@@ -145,6 +152,17 @@ function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10, NO
     println("  -> Generating Operator Cache...")
     ops_dag = [fermion_op(N_spin_orbitals, i, dagger=true) for i in 1:N_spin_orbitals]
     ops_col = [fermion_op(N_spin_orbitals, i, dagger=false) for i in 1:N_spin_orbitals]
+
+     # --- INDEX MAPPING: block vs interleaved ---
+    # block=true:  alpha indices  = 1:N_spatial, beta indices = N_spatial+1:2N_spatial
+    # block=false: interleaved  = [alpha,beta,alpha,beta,...]  => alpha = 2*p-1, beta = 2*p
+    if block
+        idx_alpha = p -> p
+        idx_beta  = p -> p + N_spatial
+    else
+        idx_alpha = p -> 2*p - 1
+        idx_beta  = p -> 2*p
+    end
 
     H = PauliSum(N_spin_orbitals, ComplexF64)
     
@@ -164,13 +182,15 @@ function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10, NO
         val = h1_spatial[p, q]
         
         if abs(val) > tol
-            # Alpha Term (indices 1...N)
-            sum!(H, val * ops_dag[p] * ops_col[q])
+            # Alpha Term
+            ia = idx_alpha(p)
+            ja = idx_alpha(q)
+            sum!(H, val * ops_dag[ia] * ops_col[ja])
             
-            # Beta Term  (indices N+1...2N)
-            # Shift indices by N_spatial
-            P, Q = p + N_spatial, q + N_spatial
-            sum!(H, val * ops_dag[P] * ops_col[Q])
+            # Beta Term
+            ib = idx_beta(p)
+            jb = idx_beta(q)
+            sum!(H, val * ops_dag[ib] * ops_col[jb])
         end
     end
     # Clear h1 to free memory (optional, but good practice)
@@ -187,39 +207,23 @@ function molecular_hamiltonian(N_spin_orbitals::Int, path::String; tol=1e-10, NO
         temp = PauliSum(N_spin_orbitals, ComplexF64)
         # OPTIMIZATION: Check tolerance immediately
         if abs(val) > tol
-            # Pre-calculate shifted indices for Beta
-            P, Q = p + N_spatial, q + N_spatial
-            R, S = r + N_spatial, s + N_spatial
+            # map indices according to chosen ordering
+            ap = idx_alpha(p); aq = idx_alpha(q); ar = idx_alpha(r); as_ = idx_alpha(s)
+            bp = idx_beta(p);  bq = idx_beta(q);  br = idx_beta(r);  bs = idx_beta(s)
 
             # 1. Alpha-Alpha Sector (p, q, r, s all Alpha)
             # Term: a_p^dag a_r^dag a_s a_q
-            # term_aa = ops_dag[p] * ops_dag[r] * ops_col[s] * ops_col[q]
-            # sum!(H, 0.5 * val * term_aa)
-            sum!(temp, 0.5 * val * ops_dag[p] * ops_dag[r] * ops_col[s] * ops_col[q])
-            
-
+            sum!(temp, 0.5 * val * ops_dag[ap] * ops_dag[ar] * ops_col[as_] * ops_col[aq])         
 
             # 2. Beta-Beta Sector (P, Q, R, S all Beta)
-            # term_bb = ops_dag[P] * ops_dag[R] * ops_col[S] * ops_col[Q]
-            # sum!(H, 0.5 * val * term_bb)
-            sum!(temp, 0.5 * val * ops_dag[P] * ops_dag[R] * ops_col[S] * ops_col[Q])
-
-
+            sum!(temp, 0.5 * val * ops_dag[bp] * ops_dag[br] * ops_col[bs] * ops_col[bq])
 
             # 3. Mixed Spin Sectors
             # Alpha-Beta: p,q are Alpha; R,S are Beta
-            # Term: a_p^dag a_R^dag a_S a_q
-            # term_ab = ops_dag[p] * ops_dag[R] * ops_col[S] * ops_col[q]
-            # sum!(H, 0.5 * val * term_ab)
-            sum!(temp, 0.5 * val * ops_dag[p] * ops_dag[R] * ops_col[S] * ops_col[q])
-
-
+            sum!(temp, 0.5 * val * ops_dag[ap] * ops_dag[br] * ops_col[bs] * ops_col[aq])
 
             # Beta-Alpha: P,Q are Beta; r,s are Alpha
-            # Term: a_P^dag a_r^dag a_s a_Q
-            # term_ba = ops_dag[P] * ops_dag[r] * ops_col[s] * ops_col[Q]
-            # sum!(H, 0.5 * val * term_ba)
-            sum!(temp, 0.5 * val * ops_dag[P] * ops_dag[r] * ops_col[s] * ops_col[Q])
+            sum!(temp, 0.5 * val * ops_dag[bp] * ops_dag[ar] * ops_col[as_] * ops_col[bq])
 
             count += 1
             sum!(H, temp)
@@ -311,7 +315,7 @@ end
 
 """
  The following is the generator function that can produce the qubit Hamiltoinan
-    in the JW representation, as input it uses the resulting molecular orbitals
+    in the JW representation, as input it uses the resulting spinorbital tensors, 
     from a SCF calculation expressed in MOs.
 """
 function qubit_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4})
@@ -400,14 +404,31 @@ function get_qubit_hamiltonian(scf_obj)
 return H, N;
 end
 
-function PauliSum_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4})
+"""
+  Creates Molecular Hamiltoinan (PauliSum) using spinorbital tensors or Molecular integrals in the physics notation.
+  N :: Total number of spinorbitals.
+  h0 :: Repulsion term
+  h1 :: One particle tensor
+  h2 :: Two particle tensor
+  MoInts :: bool, controls if the transformation is made with spinorbitals (False) or with Molecular integrals (true)
+  NOI :: bool, controls if include the all-I term (nuclear generally)
+  Returns a PauliSum Hamiltonian with interleaved ordering.
+"""
+function PauliSum_hamiltonian(N::Int64, h0::Float64, h1::Matrix{Float64}, h2::Array{Float64, 4}; NOI=true, MoInts=false)
     H = PauliSum(N, Float64)
     #one_e_term = PauliSum(N, Float64)
     #two_e_term = PauliSum(N, Float64)
     
     # H0 term (identity)
-    H += h0 * Pauli(N)
-    
+    if !NOI
+        H += h0 * Pauli(N)
+    end
+
+    if MoInts
+        N = 2*N #N_spin_orbitals
+        h1, h2 = QuantumChemQC.get_spin_orbital_tensors(h1, h2)
+    end
+
     # One-body terms
     for p in 1:N
         for q in 1:N

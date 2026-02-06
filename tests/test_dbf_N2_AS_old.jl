@@ -59,11 +59,29 @@ function run()
     n = size(H1,1)  # number of spin orbitals
     N_total = n
 
-    H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2)
-    return H, N_total
+    H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2, MoInts=true)
+    return H
 end
 
 #- - - Helpers for getting the occupation from bitstring - - - -
+# return a PauliOperators Ket equivalent to a given bitstring
+function string_to_ket(bits::String)
+    b = collect(bits)
+    v = parse.(Int128, b)
+    N = length(v)
+    out = 0
+    count = 0
+
+    for bit in v
+        if bit%2 == 1
+            out += 2^count
+        end
+        count +=1
+    end
+    ket = Ket{N}(out)
+    return ket, v, out
+end
+
 # return 0 or 1 for bit i (1-based indexing, i in 1:N)
 get_bit(k::Union{Ket{N}, Bra{N}}, i::Integer) where N = Int((k.v >> (i-1)) & Int128(1))
 
@@ -88,14 +106,24 @@ function occvec(k::Union{Ket{N}, Bra{N}}) where N
 end
 
 # Now use DBF to compute ground state energy
-function dbf_gstate(H, N)
+function dbf_gstate(H::PauliSum{N, T}) where {N,T}
+
+    # = = = DBF parameters = = = 
+    max_iter=10
+    conv_thresh=1e-5
+    evolve_coeff_thresh=1e-4
+    grad_coeff_thresh=1e-10
+    energy_lowering_thresh=1e-10
 
     Nparticles = 10 # total electrons in active space
     #ket, occ = DBF.particle_ket(N, Nparticles, 0.0; mode=:first)
     
-    kidx = argmin([real(expectation_value(H,Ket{N}(ψi))) for ψi in 1:2^N])
-    ket = Ket{N}(kidx)
-    occ = occvec(ket)
+    #kidx = argmin([real(expectation_value(H,Ket{N}(ψi))) for ψi in 1:2^N])
+    #ket = Ket{N}(kidx)
+    #occ = occvec(ket)
+
+    ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
+    #ket, occ, kidx  = string_to_ket("1111111111000000") #Leading CAS/sto3g configuration
 
     println("Initial state:")
     display(ket)
@@ -123,40 +151,42 @@ function dbf_gstate(H, N)
 
     println("\n ########################")
     res = DBF.dbf_groundstate(H0, ψ,
-                     max_iter=400, conv_thresh=1e-5, 
-                    evolve_coeff_thresh=1e-4,
-                    grad_coeff_thresh=1e-10,
-                    energy_lowering_thresh=1e-10)                         
+                    max_iter= max_iter,
+                    conv_thresh= conv_thresh, 
+                    evolve_coeff_thresh= evolve_coeff_thresh,
+                    grad_coeff_thresh= grad_coeff_thresh,
+                    energy_lowering_thresh= energy_lowering_thresh,
+                    )                        
     
     H = res["hamiltonian"]
-    gi = res["generators"]
-    θi = res["angles"]    
+    #gi = res["generators"]
+    #θi = res["angles"]    
 
     e2 = real(expectation_value(H,ψ))
-    @printf("<H> = %12.8f <U'HU> = %12.8f \n", e1, e2)
 
-    # Diplay evolved Hamiltonian
-    #println("\n Evolved Hamiltonian:")
-    #display(H)
+    #- - - Get Calculation Details
+    println("\n===============================")
+    println("= = = DBF Parameters = = =")
+    println("max_iter : ", max_iter) 
+    println("conv_thresh : ",conv_thresh)
+    println("evolve_coeff_thresh :", evolve_coeff_thresh)
+    println("grad_coeff_thresh : ", grad_coeff_thresh)
+    println("energy_lowering_thresh : ", energy_lowering_thresh)
+
+    println("Number of qubits: ", N)
+    println("Input Hamiltonian #terms: ", length(H))
+
+    # Initial energy
+    println("\n===============================")
+    println("\n Initial energy:")
+    println("Index of min energy bitstring: ", kidx)
+    println("Initial state:")
+    display(ket)
+    println("Occuation vector: ", occ)
+    @printf("<H> = %12.8f <U'HU> = %12.8f \n", e1, e2)
                     
     return
 end
 
-H, N_total = run()
-
-#display(H)
-println("Number of qubits: ", N_total)
-println("Input Hamiltonian #terms: ", length(H))
-
-dbf_gstate(H, N_total)
-
-# Initial energy
-println("\n===============================")
-println("\n Initial energy:")
-kidx = argmin([real(expectation_value(H,Ket{N_total}(ψi))) for ψi in 1:2^N_total])
-ψ = Ket{N_total}(kidx)
-println("Index of min energy bitstring: ", kidx)
-display(ψ)  
-e0 = real(expectation_value(H, ψ))
-@printf(" Initial <H> = %12.8f \n", e0)
-println("Occuation vector: ", occvec(ψ))
+H = run()
+dbf_gstate(H)
