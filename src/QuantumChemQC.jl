@@ -21,6 +21,7 @@ include("qubit_utils.jl")
 include("hamiltonians.jl")
 include("qc_utils.jl") #submodule QCUtils
 include("molecules.jl")
+include("evolve.jl")
 include("lattices/Lattices.jl")  # defines submodule
 
 using .QCUtils
@@ -32,6 +33,7 @@ export Molecules
 export Lattices, LatticeBond, Lattice
 export lattice2graph, dec2bin, bin2dec, bin2bonds!
 export square_lattice
+export coeff_clip!
 
 
 end # module QuantumChemQC

@@ -3,6 +3,8 @@ using PauliOperators
 using DBF
 using Printf
 using QuantumChemQC
+using NPZ
+
 """
  Here we read the precomputed Active Space spinorbital tensors for N2 from pyqctools,
     and use PauliOperators and DBF to compute its ground state energy.
@@ -25,7 +27,7 @@ function run()
 
 
     # Get geometry for H2 molecule and define parameters
-    geom = pq.geometries.N2(1.5)    
+    geom = pq.geometries.N2(3.0)    
 
     println("Molecule geometry from pyqctools:", geom)
     
@@ -33,6 +35,7 @@ function run()
     mol = pyimport("pyscf.gto").Mole()
     mol.atom = geom
     mol.basis = "sto-3g"
+    mol.spin = 0
     mol.build()    
 
     # RUN SCF
@@ -41,13 +44,11 @@ function run()
     println("Hartree-Fock Energy:", E_HF)
     
     # Get precomputed active space spinorbitals tensors
-    np = pyimport("numpy")
-    data = np.load("tests/1.5_tensors.npz")
-    println(data)  
-    println("Keys in npz file:", data.files)
-    H0 = 0.00 #data.get("hc")[1]
-    H1 = data.get("h1e")
-    H2 = data.get("h2e")
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/tests/N2_tensors_rhf_stable/3.0_tensors.npz"
+    data = npzread(data_path)
+    H0 = 0.00# data["hc"][1]
+    H1 = data["h1e"]
+    H2 = data["h2e"]
 
     println("H0 shape: ", size(H0))
     println(typeof(H0))
@@ -56,10 +57,12 @@ function run()
     println("H2 shape: ", size(H2))
     println(typeof(H2))
 
-    n = size(H1,1)  # number of spin orbitals
-    N_total = n
+    Norbs = size(H1,1)  # number of spatial orbitals
+    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=false, block=false)
 
-    H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2, MoInts=true)
+#    n = size(H1,1)  # number of spin orbitals
+#    N_total = n
+#    H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2, NOI=false, MoInts=false)
     return H
 end
 
@@ -109,24 +112,36 @@ end
 function dbf_gstate(H::PauliSum{N, T}) where {N,T}
 
     # = = = DBF parameters = = = 
-    max_iter=10
+    max_iter=25
     conv_thresh=1e-5
-    evolve_coeff_thresh=1e-4
+    evolve_coeff_thresh=2e-5
     grad_coeff_thresh=1e-10
     energy_lowering_thresh=1e-10
+    max_rots_per_grad=50
 
-    Nparticles = 10 # total electrons in active space
+    Nparticles = 14 # total electrons in active space
     #ket, occ = DBF.particle_ket(N, Nparticles, 0.0; mode=:first)
     
     #kidx = argmin([real(expectation_value(H,Ket{N}(ψi))) for ψi in 1:2^N])
     #ket = Ket{N}(kidx)
     #occ = occvec(ket)
 
-    ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
-    #ket, occ, kidx  = string_to_ket("1111111111000000") #Leading CAS/sto3g configuration
+    #ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
+    #ket, occ, kidx  = string_to_ket("11111110001111111000") #Leading CAS/sto3g configuration
+    ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration SINGLET
+    #ket, occ, kidx  = string_to_ket("11111111101010101010") #Leading CAS/sto3g configuration SINGLET
+    #ket, occ, kidx  = string_to_ket("1111111111000000") #Leading CAS/sto3g configuration SINGLET
+    #ket, occ, kidx  = string_to_ket("1111111110100000") #Leading CAS/sto3g configuration TRIPLET
+    #ket, occ, kidx  = string_to_ket("1111111010101000") #Leading CAS/sto3g configuration QUINTET
+    #ket, occ, kidx  = string_to_ket("1111101010101010") #Leading CAS/sto3g configuration SEPTET
+    
+    println(occ)
+    println(N)
 
     println("Initial state:")
     display(ket)
+    #e1 = expectation_value(H,ket)
+    #@printf(" Reference = %12.8f\n", e1)
 
     # Transform H to make |000> the most stable bitstring
     for i in 1:N
@@ -156,6 +171,8 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
                     evolve_coeff_thresh= evolve_coeff_thresh,
                     grad_coeff_thresh= grad_coeff_thresh,
                     energy_lowering_thresh= energy_lowering_thresh,
+                    max_rots_per_grad = max_rots_per_grad,
+                    #n_body=1
                     )                        
     
     H = res["hamiltonian"]
@@ -189,4 +206,9 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
 end
 
 H = run()
+#ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration SINGLET
+#println("Initial state:")
+#display(ket)
+#e1 = expectation_value(H,ket)
+#@printf(" Reference = %12.8f\n", e1)
 dbf_gstate(H)

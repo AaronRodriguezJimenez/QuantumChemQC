@@ -79,8 +79,16 @@ function Z_to_symbol(Z)
     return dict[Z]
 end
 
+function coeff_clip!(ps::KetSum{N}; thresh=1e-16) where {N}
+    return filter!(p->abs(p.second) > thresh, ps)
+end
+
 function coeff_clip!(ps::PauliSum{N}; thresh=1e-16) where {N}
-    filter!(p->abs(p.second) > thresh, ps)
+    return filter!(p->abs(p.second) > thresh, ps)
+end
+
+function coeff_clip(ps::PauliSum{N}; thresh=1e-16) where {N}
+    return filter(p->abs(p.second) > thresh, ps)
 end
 
 """
@@ -103,4 +111,23 @@ function build_h_cube_mol(a::Float64, n::Int)
         end
     end
     return join(lines, "\n")
+end
+
+#- - - Helpers for handling the occupation from bitstring - - - -
+# return a PauliOperators Ket equivalent to a given bitstring
+function string_to_ket(bits::String)
+    b = collect(bits)
+    v = parse.(Int128, b)
+    N = length(v)
+    out = 0
+    count = 0
+
+    for bit in v
+        if bit%2 == 1
+            out += 2^count
+        end
+        count +=1
+    end
+    ket = Ket{N}(out)
+    return ket, v, out
 end
