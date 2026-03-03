@@ -7,6 +7,9 @@ using Tullio, LinearAlgebra, SpecialFunctions, GaussianBasis,
       FileIO, StaticArrays, IterTools, Graphs, Printf
 using PauliOperators   # v2
 using DBF
+using Random
+using StatsBase
+using Statistics
 using NPZ
 
 include("io.jl")

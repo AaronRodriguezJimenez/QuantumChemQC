@@ -44,7 +44,8 @@ function run()
     println("Hartree-Fock Energy:", E_HF)
     
     # Get precomputed active space spinorbitals tensors
-    data_path = "/Users/admin/PycharmProjects/pyQCTools/tests/N2_tensors_rhf_stable/3.0_tensors.npz"
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF/N2test_tensors.npz"
+    #data_path = "/Users/admin/PycharmProjects/pyQCTools/tests/N2_tensors_rhf_stable/3.0_tensors.npz"
     data = npzread(data_path)
     H0 = 0.00# data["hc"][1]
     H1 = data["h1e"]
@@ -128,7 +129,8 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
 
     #ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("11111110001111111000") #Leading CAS/sto3g configuration
-    ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration SINGLET
+    ket, occ, kidx  = string_to_ket("1100") #Leading CAS/sto3g configuration SINGLET
+    #ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration SINGLET
     #ket, occ, kidx  = string_to_ket("11111111101010101010") #Leading CAS/sto3g configuration SINGLET
     #ket, occ, kidx  = string_to_ket("1111111111000000") #Leading CAS/sto3g configuration SINGLET
     #ket, occ, kidx  = string_to_ket("1111111110100000") #Leading CAS/sto3g configuration TRIPLET
