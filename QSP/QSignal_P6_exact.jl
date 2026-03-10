@@ -9,7 +9,7 @@ using Plots
 """
 function run_dip()
     # Get precomputed active space spinorbitals tensors
-    data_path = "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/Ethyl-RHF_dip_mo.npz"
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P6-RHF_dip_mo.npz"
     data = npzread(data_path)
     d_mo = data["dip_op"]
     println("d_mo shape: ", size(d_mo))
@@ -24,7 +24,7 @@ end
 
 function run_H()
     # Get Molecular Hamiltonian
-    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/Ethyl-RHF_integrals.npz"
+    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P6-RHF_integrals.npz"
     data = npzread(data_path)
     H0 = data["hc"][1]
     H1 = data["h1e"]
@@ -48,7 +48,10 @@ H = run_H()
 Hmat = Matrix(H)
 Omat = Matrix(D)
 
-ket, _ = QuantumChemQC.string_to_ket("1100")
+n_intervals = 100
+t = 50.0 #Total Time Evolution
+dt = t/n_intervals
+ket, _ = QuantumChemQC.string_to_ket("111111000000")
 V0 = Vector(ket)
 
 # Compute O matrix elements:
@@ -97,11 +100,11 @@ plt = plot!(tgrid, iRES, lw=2,# seriestype=:scatter,
           label="Im(C(t)")
 
 xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
-title!(plt, "C2H4(4e,4o) ,dt=$dt")
-savefig(plt, "QSP_P1_exact.pdf")
+title!(plt, "P6(12e,12o) ,dt=$dt")
+savefig(plt, "QSP_P6_exact.pdf")
 
 println("- - - Sanity Check: saving signal - - - ")
-open("/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P1_exact_signals.txt", "w") do io
+open("/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P6_exact_signals.txt", "w") do io
     @printf(io,"dt     Re(C(t))    Im(C(t))   |C(t)|^2   |C(t)|\n")
     for (i, interval) in enumerate(tgrid)
         normop2 = rRES[i]^2 + iRES[i]^2

@@ -103,10 +103,13 @@ xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
 title!(plt, "P3(6e,6o) ,dt=$dt")
 savefig(plt, "QSP_P3_exact.pdf")
 
-println("- - - Sanity Check: |C(t)|^2 - - - ")
-@printf("idx    dt     Re(C(t))    Im(C(t))   |C(t)|^2   |C(t)|\n")
-for (i,interval) in enumerate(tgrid)
-    normop2 = rRES[i]^2 + iRES[i]^2
-    normop = sqrt(normop2)
-    @printf("%.2s    %.4f    %.6f   %.6f   %.6f  %.6f\n", i, interval, rRES[i], iRES[i], normop2, normop)
+println("- - - Sanity Check: saving signal - - - ")
+open("/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P3_exact_signals.txt", "w") do io
+    @printf(io,"dt     Re(C(t))    Im(C(t))   |C(t)|^2   |C(t)|\n")
+    for (i, interval) in enumerate(tgrid)
+        normop2 = rRES[i]^2 + iRES[i]^2
+        normop = sqrt(normop2)
+        @printf(io, "%.4f     %.6f    %.6f    %.6f   %.6f\n",
+                interval, rRES[i], iRES[i], normop2, normop)
+    end
 end
