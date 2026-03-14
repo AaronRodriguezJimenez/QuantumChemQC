@@ -31,6 +31,7 @@ Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 [compat]
 DBF = "1.0.0"
 JLD2 = "0.6.2"
+LinearAlgebra = "1.11.0"
 NPZ = "0.4.3"
 PauliOperators = "2.0.0"
 Plots = "1.41.6"

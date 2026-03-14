@@ -9,7 +9,7 @@ using Plots
 """
 function run_dip()
     # Get precomputed active space spinorbitals tensors
-    data_path = "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/Ethyl-RHF_dip_mo.npz"
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_dip_mo.npz"
     data = npzread(data_path)
     d_mo = data["dip_op"]
     println("d_mo shape: ", size(d_mo))
@@ -24,7 +24,7 @@ end
 
 function run_H()
     # Get Molecular Hamiltonian
-    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/Ethyl-RHF_integrals.npz"
+    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz"
     data = npzread(data_path)
     H0 = data["hc"][1]
     H1 = data["h1e"]
@@ -66,7 +66,7 @@ end
 # Define time evolution parameters
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
-k = 100
+k = 200
 t = 50.00
 dt = t/k
 nsamp = Int(k) + 1
@@ -98,15 +98,18 @@ plt = plot!(tgrid, iRES, lw=2,# seriestype=:scatter,
 
 xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
 title!(plt, "C2H4(4e,4o) ,dt=$dt")
-savefig(plt, "QSP_P1_exact.pdf")
+savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P1_exact.pdf")
 
 println("- - - Sanity Check: saving signal - - - ")
 open("/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P1_exact_signals.txt", "w") do io
-    @printf(io,"dt     Re(C(t))    Im(C(t))   |C(t)|^2   |C(t)|\n")
+    #@printf(io,"dt     Re(C(t))    Im(C(t))   |C(t)|^2   |C(t)|\n")
+    @printf(io,"dt     Re(C(t))    Im(C(t))\n")
     for (i, interval) in enumerate(tgrid)
-        normop2 = rRES[i]^2 + iRES[i]^2
-        normop = sqrt(normop2)
-        @printf(io, "%.4f     %.6f    %.6f    %.6f   %.6f\n",
-                interval, rRES[i], iRES[i], normop2, normop)
+        @printf(io, "%.4f     %.6f    %.6f\n",
+                interval, rRES[i], iRES[i])
+#        normop2 = rRES[i]^2 + iRES[i]^2
+#        normop = sqrt(normop2)
+#        @printf(io, "%.4f     %.6f    %.6f    %.6f   %.6f\n",
+#                interval, rRES[i], iRES[i], normop2, normop)
     end
 end
