@@ -254,7 +254,7 @@ function fermion_op(N::Int, i::Int; dagger::Bool=true)
 end
 
 function molecular_hamiltonian_uhf(N_spatial::Int, path::String; tol=1e-10, NOI=true, block=true)
-    coeff_thresh_clip = 1e-6
+    coeff_thresh_clip = 1e-10
     N_spin_orbitals = 2 * N_spatial
     println("Building UHF Hamiltonian (memory-efficient)...")
     println("  -> System: $N_spatial Spatial Orbitals ($N_spin_orbitals Spin Orbitals)")
