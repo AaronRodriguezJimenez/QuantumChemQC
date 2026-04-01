@@ -44,11 +44,13 @@ function run()
     println("Hartree-Fock Energy:", E_HF)
     
     # Get precomputed active space spinorbitals tensors
-    data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_rhf_stable/1.1_tensors.npz" #Boys canonical localized
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_uhf_NOs/3.0_tensors.npz" #Natural orbs
+    #data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_uhf/1.1_tensors.npz" #Boys canonical localized
+    #data_path = "/Users/admin/PycharmProjects/pyQCTools/tests/Test_N2/N2_3.0_sto3g_UHF_integrals.npz"
     data = npzread(data_path)
     H0 = data["hc"][1]
-    H1 = data["h1e"]
-    H2 = data["h2e"]
+    H1 = data["h1_a"]
+    H2 = data["h2aa"]
 
     println("H0 shape: ", size(H0))
     println(H0)
@@ -58,11 +60,9 @@ function run()
     println(typeof(H2))
 
     Norbs = size(H1,1)  # number of spatial orbitals
-    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=false, block=false)
+    @time H = QuantumChemQC.molecular_hamiltonian_uhf(Norbs, data_path, NOI=false, block=false)
 
-#    n = size(H1,1)  # number of spin orbitals
-#    N_total = n
-#    H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2, NOI=false, MoInts=false)
+    QuantumChemQC.coeff_clip!(H, thresh=1e-6)
     return H
 end
 
@@ -112,12 +112,12 @@ end
 function dbf_gstate(H::PauliSum{N, T}) where {N,T}
 
     # = = = DBF parameters = = = 
-    max_iter=2000
-    conv_thresh=1e-6
+    max_iter=20
+    conv_thresh=1e-10
     evolve_coeff_thresh=1e-10
-    grad_coeff_thresh=1e-6 #1e-10
-    energy_lowering_thresh=1e-6 #1e-10
-    max_rots_per_grad=1 #50
+    grad_coeff_thresh=1e-10
+    energy_lowering_thresh=1e-10
+    max_rots_per_grad=1
     ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("11111110001111111000") #Leading CAS/sto3g configuration
@@ -165,12 +165,13 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
                     grad_coeff_thresh= grad_coeff_thresh,
                     energy_lowering_thresh= energy_lowering_thresh,
                     max_rots_per_grad = max_rots_per_grad,
-                    #n_body=1
+                    n_body=1
                     )                        
     
     H = res["hamiltonian"]
     #gi = res["generators"]
-    #θi = res["angles"]    
+    #θi = res["angles"]
+        
 
     e2 = real(expectation_value(H,ψ))
 
@@ -194,18 +195,26 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
     display(ket)
     println("Occuation vector: ", occ)
     @printf("<H> = %12.8f <U'HU> = %12.8f \n", e1, e2)
+
+    #println("* * * * * * * * * * * * * * * * * ")
+    #println("Evolved Hamiltonian")
+    #display(H)
                     
     return
 end
 
 
 H = run()
+#println("* * * * * * * * * * * * * * * * * ")
+#println("Initial Hamiltonian 😆")
+#display(H)
 #ket, occ, kidx  = string_to_ket("11111110001111111000") #Block
-#ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration SINGLET
-#println("Initial state:")
-#display(ket)
-#e1 = expectation_value(H,ket)
-#@printf(" Reference = %12.8f\n", e1)
+ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration SINGLET
+println("Initial state:")
+display(ket)
+e1 = expectation_value(H,ket)
+@printf(" Reference = %12.8f\n", e1)
+
 dbf_gstate(H)
 
 #=

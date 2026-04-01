@@ -351,7 +351,7 @@ function molecular_hamiltonian_uhf(N_spatial::Int, path::String; tol=1e-10, NOI=
         if abs(val_bb) > tol
             ip = idx_beta(p); iq = idx_beta(q); ir = idx_beta(r); is_ = idx_beta(s)
             # 1/2 factor for same-spin two-body terms
-            sum!(H, 0.5 * val_aa * ops_dag[ip] * ops_dag[ir] * ops_col[is_] * ops_col[iq])
+            sum!(H, 0.5 * val_bb * ops_dag[ip] * ops_dag[ir] * ops_col[is_] * ops_col[iq])
         end
 
         # --- Alpha-Beta (ab|ab) ---
@@ -365,6 +365,8 @@ function molecular_hamiltonian_uhf(N_spatial::Int, path::String; tol=1e-10, NOI=
             # create alpha p, annihilate alpha q; create beta r, annihilate beta s
             sum!(H, val_ab * ops_dag[ia_p] * ops_dag[ib_r] * ops_col[ib_s] * ops_col[ia_q])
         end
+
+
 
         # accumulate
     end

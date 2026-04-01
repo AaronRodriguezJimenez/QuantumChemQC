@@ -27,7 +27,7 @@ function run()
 
 
     # Get geometry for H2 molecule and define parameters
-    geom = pq.geometries.N2(1.1)    
+    geom = pq.geometries.N2(3.0)    
 
     println("Molecule geometry from pyqctools:", geom)
     
@@ -44,9 +44,8 @@ function run()
     println("Hartree-Fock Energy:", E_HF)
     
     # Get precomputed active space spinorbitals tensors
-    #data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_uhf_NOs/1.5_tensors.npz" #Natural orbs
-    #data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_uhf/1.1_tensors.npz" #Boys canonical localized
-    #data_path = "/Users/admin/PycharmProjects/pyQCTools/tests/Test_N2/N2_3.0_sto3g_UHF_integrals.npz"
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_ccsd/3.0_tensors.npz" #uccsd Natural orbs
+
     data = npzread(data_path)
     H0 = data["hc"][1]
     H1 = data["h1_a"]
@@ -62,7 +61,7 @@ function run()
     Norbs = size(H1,1)  # number of spatial orbitals
     @time H = QuantumChemQC.molecular_hamiltonian_uhf(Norbs, data_path, NOI=false, block=false)
 
-    QuantumChemQC.coeff_clip!(H, thresh=1e-6)
+    #QuantumChemQC.coeff_clip!(H, thresh=1e-6)
     return H
 end
 
@@ -112,12 +111,12 @@ end
 function dbf_gstate(H::PauliSum{N, T}) where {N,T}
 
     # = = = DBF parameters = = = 
-    max_iter=2000
+    max_iter=20
     conv_thresh=1e-10
-    evolve_coeff_thresh=1e-6
+    evolve_coeff_thresh=1e-10
     grad_coeff_thresh=1e-10
     energy_lowering_thresh=1e-10
-    max_rots_per_grad=50
+    max_rots_per_grad=1
     ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("11111110001111111000") #Leading CAS/sto3g configuration

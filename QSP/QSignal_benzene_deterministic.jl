@@ -133,28 +133,27 @@ function evolution_op(ket, o::PauliSum{N,T}, H::PauliSum{N,T}, n_intervals, dt;
     #accumulated_error = 0
     for ki in 1:n_intervals
             # Trotter terms U_1 U_2, ..., U_k
-            
-            WWt = W * Wt # OTOC-like product
             accumulated_error = 0
-            e1 = expectation_value(WWt,ket)
 
             for j in 1:nt
                 # Access to the evolution of the operator by H = Sum(theta_i * P_i)
                 Pi  = generators[j]
-                theta = 2*dt*angles[j]
+                theta = 2 * dt * angles[j]
                 pb = PauliBasis(Pi)
-                
                 evolve!(Wt, pb, theta)
+                
+                coeff_clip!(Wt, thresh=1.0e-12)
+                e1 = expectation_value(W * Wt, ket)
 
                 # --- POST pruning ---
                 coeff_clip!(Wt, thresh=thresh)
-                WWt = W * Wt 
-                e2 = expectation_value(WWt, ket)
+                #WWt = W * Wt 
+                e2 = expectation_value(W * Wt, ket)
                 accumulated_error += e2-e1
             end           
             
-            #WWt = W * Wt (at time interval)
-            expval = expectation_value(WWt, ket) - accumulated_error # Contraction with reference ket
+            WWt = W * Wt #(at time interval)
+            expval = expectation_value(WWt, ket) + accumulated_error # Contraction with reference ket
             Ctreal = real(expval) # Real part of C(t) = <O(0) * (U_i^ O U_i)>
             Ctimag = imag(expval)
             push!(rCtvals, Ctreal)
