@@ -507,7 +507,7 @@ end
    This function uses integrals from a Restricted-SCF type calculation
 """
 function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, block=true)
-
+    coeff_thresh_clip = 1e-8
     N_spin_orbitals = 2*N_spatial
     # 1. Determine Spatial Dimensions
     println("Building Dipole Operator Directly (Memory Efficient)...")
@@ -552,7 +552,7 @@ function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, b
             sum!(D, val * ops_dag[ia] * ops_col[ja])
         end
     end
-    coeff_clip!(D)
+    coeff_clip!(D, thresh=coeff_thresh_clip)
 
     #- - - r_y terms - - -
     for p in 1:N_spatial, q in 1:N_spatial
@@ -577,7 +577,7 @@ function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, b
 
     # Clear h1 to free memory (optional, but good practice)
     dip_op = nothing
-    coeff_clip!(D)
+    coeff_clip!(D, thresh=coeff_thresh_clip)
 
     return D
 end

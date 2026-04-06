@@ -161,7 +161,7 @@ function evolution_op(ket, o::PauliSum{N,T}, H::PauliSum{N,T}, n_intervals, dt;
     end
 
     tgrid = collect(range(0.0, stop=n_intervals*dt, length=length(rCtvals)))
-
+    
     return rCtvals, iCtvals, tgrid
 end
 

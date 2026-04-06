@@ -36,7 +36,8 @@ end
 
 
 """
-Quantum signal from Pauli-propagation time series with pruning controls.
+Pauli-propagation time series with pruning controls.
+Using First order Trotterization
 Arguments:
 - generators, angles  : from UnitaryPruning.heisenberg_1D(...)
 - o                   : PauliSum (used as both V and W by default)
@@ -44,12 +45,10 @@ Arguments:
 - thresh              : magnitude threshold (|coeff|)
 - n_intervals : number of intervals,  n_intervals =tot_time/dt
 """
-function QSP_evolution_op(H::PauliSum{N,T}, o::PauliSum{N,T},
-                      n_intervals, 
-                      dt, 
-                      ket;
-                      thresh::Float64=1e-3) where {N, T}
+function QSP_evolution_op(ket, o::PauliSum{N,T}, H::PauliSum{N,T}, n_intervals, dt;
+                      thresh::Float64=1e-3) where {N,T}
 
+    #err = Vector{Float64}([])
     Wt = deepcopy(o)        # evolve W ≡ U*OU
     W  = deepcopy(o)        # initial operator 
     rCtvals = Vector{Float64}([])#(undef, nsamp) # vector for C(t) values storing
@@ -65,39 +64,46 @@ function QSP_evolution_op(H::PauliSum{N,T}, o::PauliSum{N,T},
     push!(rCtvals, C0real)
     push!(iCtvals, C0imag)
 
-    #generators, angles = gens_from_H(H)
+    # Extract Pauli strings and coefficients
+    generators, angles = gens_from_H(H)
+    #@printf("Hamiltonian has %d terms \n", length(coeffs))
 
-    #angles = (2*dt/trott_steps) .* angles 
-    #nt = length(angles)                            
-    
+    nt = length(angles)                            
+    println("Total Rotations:", nt * n_intervals)
     # Evolve W under Trotterization
-    for ki in 1:n_intervals
-     #   for rep in 1:trott_steps
-            # Trotter terms U_1 U_2, ..., U_k
-            for (p,c) in H #1:nt
-                # Access to the evolution of the operator by H = Sum(theta_i * P_i)
-                #Pi  = generators[j]
-                #display(Pi)
-                #theta = 2*dt*angles[j]
-                #pb = PauliBasis(Pi)
-                theta = real(c)
-                evolve!(Wt, p, 2*dt*theta)
-            end
-            # --- POST pruning ---
-            coeff_clip!(Wt, thresh=thresh)
-            # -----------------------------
-      #  end
 
-        WWt = W * Wt # OTOC-like product
-        expval = expectation_value(WWt, ket) # Contraction with reference ket
-        Ctreal = real(expval) # Real part of C(t) = <O(0) * (U_i^ O U_i)>
-        Ctimag = imag(expval)
-        push!(rCtvals, Ctreal)
-        push!(iCtvals, Ctimag)
+    #accumulated_error = 0
+    for ki in 1:n_intervals
+            # Trotter terms U_1 U_2, ..., U_k
+            accumulated_error = 0
+
+            for j in 1:nt
+                # Access to the evolution of the operator by H = Sum(theta_i * P_i)
+                Pi  = generators[j]
+                theta = 2 * dt * angles[j]
+                pb = PauliBasis(Pi)
+                evolve!(Wt, pb, theta)
+                
+                coeff_clip!(Wt, thresh=1.0e-12)
+                e1 = expectation_value(W * Wt, ket)
+
+                # --- POST pruning ---
+                coeff_clip!(Wt, thresh=thresh)
+                #WWt = W * Wt 
+                e2 = expectation_value(W * Wt, ket)
+                accumulated_error += e2-e1
+            end           
+            
+            WWt = W * Wt #(at time interval)
+            expval = expectation_value(WWt, ket) + accumulated_error # Contraction with reference ket
+            Ctreal = real(expval) # Real part of C(t) = <O(0) * (U_i^ O U_i)>
+            Ctimag = imag(expval)
+            push!(rCtvals, Ctreal)
+            push!(iCtvals, Ctimag)
     end
 
     tgrid = collect(range(0.0, stop=n_intervals*dt, length=length(rCtvals)))
-
+    
     return rCtvals, iCtvals, tgrid
 end
 
@@ -125,7 +131,7 @@ function qdrift_propagator(ket, o::PauliSum{N,T}, H::PauliSum{N,T},
                            plot::Bool=true, print_selection::Bool=true) where {N,T}
 
     # Extract Pauli strings and coefficients
-    ops, coeffs = extract_hamiltonian_coeffs_and_ops(H)
+    ops, coeffs = gens_from_H(H)
     @printf("Hamiltonian has %.2f terms \n", length(coeffs))
     L = length(coeffs)
     if L == 0

@@ -18,7 +18,7 @@ function run_dip()
     N = size(d_mo)[2]  # number of spatial orbitals
     println("N:", N)
     @time D = QuantumChemQC.R_dipole_moment_op(N, data_path, block=false)
-#    display(D)
+    coeff_clip!(D, thresh=1.0e-6)
     return D
 end
 
@@ -72,7 +72,7 @@ end
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
 k = 200
-t = 100.00
+t = 50.00
 dt = t/k
 nsamp = Int(k) + 1
 tgrid = collect(range(0.0, stop=k*dt, length=nsamp))

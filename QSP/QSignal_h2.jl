@@ -18,7 +18,7 @@ function run_dip()
     N = size(d_mo)[2]  # number of spatial orbitals
     println("N:", N)
     @time D = QuantumChemQC.R_dipole_moment_op(N, data_path, block=false)
-#    display(D)
+    coeff_clip!(D, thresh=1.0e-6)
     return D
 end
 
@@ -51,16 +51,15 @@ display(H)
 # Define time evolution parameters
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
-n_intervals = 100
+n_intervals = 200
 t = 50.0 #Total Time Evolution
 dt = t/n_intervals
 ket, _ = QuantumChemQC.string_to_ket("1100")
-evol_thresh = 1e-6
+evol_thresh = 0.00001
 
 println(typeof(D))
 println(typeof(H))
-rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op(H, D, n_intervals, 
-                                                        dt, ket;
+rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op(ket, D, H, n_intervals, dt,
                                                         thresh=evol_thresh)
 
 # Number of snapshots actually returned

@@ -111,7 +111,7 @@ end
 function dbf_gstate(H::PauliSum{N, T}) where {N,T}
 
     # = = = DBF parameters = = = 
-    max_iter=20
+    max_iter=200
     conv_thresh=1e-10
     evolve_coeff_thresh=1e-10
     grad_coeff_thresh=1e-10

@@ -117,7 +117,7 @@ function dbf_gstate(H::PauliSum{N, T}) where {N,T}
     evolve_coeff_thresh=1e-10
     grad_coeff_thresh=1e-10
     energy_lowering_thresh=1e-10
-    max_rots_per_grad=1 #50
+    max_rots_per_grad=1 
     ket, occ, kidx  = string_to_ket("11111111111111000000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("1111100011111000") #Leading CAS/sto3g configuration
     #ket, occ, kidx  = string_to_ket("11111110001111111000") #Leading CAS/sto3g configuration
