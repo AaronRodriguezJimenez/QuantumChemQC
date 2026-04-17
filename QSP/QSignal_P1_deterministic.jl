@@ -6,7 +6,7 @@ using Plots
 
 function run_H()
     # Get Molecular Hamiltonian
-    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/benzene_and_acenes/benz-RHF_integrals.npz"
+    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz"
     data = npzread(data_path)
     H0 = data["hc"][1]
     H1 = data["h1e"]
@@ -27,25 +27,21 @@ function run_H()
     return H
 end
 
-# S0 state generator
-O = Pauli(12, X=[1,2,3,7,8,9])
+O = Pauli(4, X=[1,3])
 O = PauliSum(O)
-# -> LA transition
-O += Pauli(12, X=[1,2,3,7,8,10])
-# -> LB transition
-O += Pauli(12, X=[1,2,3,7,9,11])
+O += Pauli(4, X=[2,3])
 H = run_H()
-ket, _ = QuantumChemQC.string_to_ket("000000000000")
+ket, _ = QuantumChemQC.string_to_ket("0000")
 #display(H)
 
 # Define time evolution parameters
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
-n_intervals = 200
+n_intervals = 100
 t = 25.0
-dt = t/n_intervals
+dt = 0.05#t/n_intervals
 
-evol_thresh = 0.01 
+evol_thresh = 0.00001 
 rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op(ket, O, H, n_intervals, dt,
                                                         thresh=evol_thresh)
 
@@ -54,13 +50,13 @@ nsnap = length(rRES)
 println("* * * * Number of snapshots collected: $nsnap")
 
 # Print C(t) results
-plt = plot(tgrid, rRES, lw=2, #seriestype=:scatter,
-          label="Re(C(t), th=$evol_thresh")
-plt = plot!(tgrid, iRES, lw=2, #seriestype=:scatter,
-          label="Im(C(t), th=$evol_thresh")
+#plt = plot(tgrid, rRES, lw=2, #seriestype=:scatter,
+#          label="Re(C(t), th=$evol_thresh")
+#plt = plot!(tgrid, iRES, lw=2, #seriestype=:scatter,
+#          label="Im(C(t), th=$evol_thresh")
 
-xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
-savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_Benz_deterministic_$evol_thresh.pdf")
+#xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
+#savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P1_deterministic_$evol_thresh.pdf")
 
 println("- - - Sanity Check: |C(t)|^2 - - - ")
 @printf("idx    dt     Re(C(t))    Im(C(t))\n")
@@ -100,7 +96,8 @@ plt2 = plot!(tgrid, imag(F), lw=2, #seriestype=:scatter,
           label="Im(F(t), th=$evol_thresh")
 
 xlabel!(plt2, "Time"); ylabel!(plt2, "exp(-iE_t) * < O(0)O(t) >")
-savefig(plt2, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_Benz_deterministic_F_$evol_thresh.pdf")
+#savefig(plt2, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_P1_deterministic_F_$evol_thresh.pdf")
+savefig(plt2, "/Users/admin/P1_F_$evol_thresh-k=$n_intervals-dt=$dt.pdf")
 
 println("- - - Corrected signal  - - - ")
 @printf("dt   Re(F(t))    Im(F(t))\n")

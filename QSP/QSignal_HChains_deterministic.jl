@@ -4,9 +4,10 @@ using QuantumChemQC
 using NPZ
 using Plots
 
-function run_H()
+function run_H(n)
+    # n is the number of H atoms in the chain
     # Get Molecular Hamiltonian
-    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/benzene_and_acenes/benz-RHF_integrals.npz"
+    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/small_molecules/HChains/h$n-RHF_tensors.npz"
     data = npzread(data_path)
     H0 = data["hc"][1]
     H1 = data["h1e"]
@@ -22,47 +23,39 @@ function run_H()
     Norbs = size(H1,1)  # number of spatial orbitals
     
     #H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2)
-    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=true)
+    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=false, block=true)
 
     return H
 end
 
-# S0 state generator
-O = Pauli(12, X=[1,2,3,7,8,9])
+n = 4 #4,6,8,10 
+H = run_H(n)
+#In the sto3g basis set each atom contributes with 1 spatial orbital, thus for n H atoms we have n spatial orbitals and 2n spin-orbitals = n qubits.
+O = Pauli(2*n, X=[1,2,5,6])
 O = PauliSum(O)
-# -> LA transition
-O += Pauli(12, X=[1,2,3,7,8,10])
-# -> LB transition
-O += Pauli(12, X=[1,2,3,7,9,11])
-H = run_H()
-ket, _ = QuantumChemQC.string_to_ket("000000000000")
-#display(H)
+#O += Pauli(2*n, X=[2,3])
+Hmat = Matrix(H)
+Omat = Matrix(O)
+ket = Ket{2*n}(0)#All-zero state
+
 
 # Define time evolution parameters
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
-n_intervals = 200
-t = 25.0
+n_intervals = 100
+t = 10.0
 dt = t/n_intervals
-
 evol_thresh = 0.01 
+
 rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op(ket, O, H, n_intervals, dt,
-                                                        thresh=evol_thresh)
+                                                        thresh=evol_thresh);
 
 # Number of snapshots actually returned
 nsnap = length(rRES)
 println("* * * * Number of snapshots collected: $nsnap")
 
-# Print C(t) results
-plt = plot(tgrid, rRES, lw=2, #seriestype=:scatter,
-          label="Re(C(t), th=$evol_thresh")
-plt = plot!(tgrid, iRES, lw=2, #seriestype=:scatter,
-          label="Im(C(t), th=$evol_thresh")
 
-xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
-savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_Benz_deterministic_$evol_thresh.pdf")
-
-println("- - - Sanity Check: |C(t)|^2 - - - ")
+println("- - - Full signal: C(t) - - - ")
 @printf("idx    dt     Re(C(t))    Im(C(t))\n")
 for (i,interval) in enumerate(tgrid)
     normop2 = rRES[i]^2 + iRES[i]^2
@@ -100,7 +93,7 @@ plt2 = plot!(tgrid, imag(F), lw=2, #seriestype=:scatter,
           label="Im(F(t), th=$evol_thresh")
 
 xlabel!(plt2, "Time"); ylabel!(plt2, "exp(-iE_t) * < O(0)O(t) >")
-savefig(plt2, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_Benz_deterministic_F_$evol_thresh.pdf")
+savefig(plt2, "/Users/admin/P1_F_$evol_thresh-k=$n_intervals-dt=$dt.pdf")
 
 println("- - - Corrected signal  - - - ")
 @printf("dt   Re(F(t))    Im(F(t))\n")

@@ -581,4 +581,62 @@ function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, b
 
     return D
 end
+
+"""
+   Dipole moment compoentn (x, y or z) JW representation
+   This function uses integrals from a Restricted-SCF type calculation
+    the path should point to a npz file which contains the dipole moment integrals in the format 
+    (N, N) where the first dimension corresponds to the x, y or z components of the dipole moment.
+"""
+function xyz_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, block=true)
+    coeff_thresh_clip = 1e-8
+    N_spin_orbitals = 2*N_spatial
+    # 1. Determine Spatial Dimensions
+    println("Building Dipole Operator Directly (Memory Efficient)...")
+    println("  -> System: $N_spatial Spatial Orbitals ($N_spin_orbitals Spin Orbitals)")
+
+    # 2. Load Spatial Integrals (Small arrays)
+    # h1 is N x N
+    # h2 is N x N x N x N
+    Op = npzread(path)
+    dip_op = Op["dip_op"]
+
+    # 3. Pre-calculate Operators
+    # We store these to avoid re-allocating Pauli objects constantly.
+    println("  -> Generating Operator Cache...")
+    ops_dag = [fermion_op(N_spin_orbitals, i, dagger=true) for i in 1:N_spin_orbitals]
+    ops_col = [fermion_op(N_spin_orbitals, i, dagger=false) for i in 1:N_spin_orbitals]
+
+     # --- INDEX MAPPING: block vs interleaved ---
+    if block
+        idx_alpha = p -> p
+        idx_beta  = p -> p + N_spatial
+    else
+        idx_alpha = p -> 2*p - 1
+        idx_beta  = p -> 2*p
+    end
+
+    D = PauliSum(N_spin_orbitals, ComplexF64)
+
+    # --- PART 1: ONE-BODY TERMS ---
+    # Hamiltonian: sum h_pq ( a^dag_p_alpha a_q_alpha + a^dag_p_beta a_q_beta )
+    println("  -> Processing 1-Body terms...")
+
+    #- - - r_x terms - - -
+    for p in 1:N_spatial, q in 1:N_spatial
+        val = dip_op[p, q]
+        if abs(val) > tol
+            ia = idx_alpha(p)
+            ja = idx_alpha(q)
+            sum!(D, val * ops_dag[ia] * ops_col[ja])
+        end
+    end
+    coeff_clip!(D, thresh=coeff_thresh_clip)
+
+    # Clear h1 to free memory (optional, but good practice)
+    dip_op = nothing
+    coeff_clip!(D, thresh=coeff_thresh_clip)
+
+    return D
+end
     

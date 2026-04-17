@@ -27,11 +27,11 @@ function gens_from_H(H::PauliSum{N,T}) where {N,T}
     generators = Vector{PauliBasis{N}}([])
     angles = Vector{Float64}([])
     for (p,c) in H
-        println(c)
+        #println(c)
         push!(generators, p)
         push!(angles, c)
     end
-    return generators, angles
+    return generators, angles;
 end
 
 
