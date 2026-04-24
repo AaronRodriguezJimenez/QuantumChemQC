@@ -41,22 +41,30 @@ n_intervals = 200
 t = 50.0
 dt = t/n_intervals
 
-evol_thresh = 0.01 
-rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op(ket, O, H, n_intervals, dt,
+evol_thresh = 0.00001 
+rRESc, iRESc, tgridc = QuantumChemQC.QSP_evolution_op(ket, O, H, n_intervals, dt,
                                                         thresh=evol_thresh)
+
+rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op_no_corr(ket, O, H, n_intervals, dt,
+                                                           thresh=evol_thresh)
 
 # Number of snapshots actually returned
 nsnap = length(rRES)
 println("* * * * Number of snapshots collected: $nsnap")
 
 # Print C(t) results
-plt = plot(tgrid, rRES, lw=2, #seriestype=:scatter,
-          label="Re(C(t), th=$evol_thresh")
-plt = plot!(tgrid, iRES, lw=2, #seriestype=:scatter,
-          label="Im(C(t), th=$evol_thresh")
+plt = plot(tgrid, rRESc, lw=2, seriestype=:scatter,color=:red,
+          label="corr Re(C(t), th=$evol_thresh")
+#plt = plot!(tgrid, iRESc, lw=2, seriestype=:scatter, color=:red,
+#          label="corrIm(C(t), th=$evol_thresh")
+
+plt = plot!(tgrid, rRES, lw=2, #seriestype=:scatter,
+          label="Im(C(t), th=$evol_thresh", color=:black)
+#plt = plot!(tgrid, iRES, lw=2, #seriestype=:scatter,
+#          label="Im(C(t), th=$evol_thresh", color=:green)          
 
 xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
-savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_H2_deterministic_$evol_thresh.pdf")
+savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/H2_PP_comparison_$evol_thresh.pdf")
 
 println("- - - Sanity Check: |C(t)|^2 - - - ")
 @printf("idx    dt     Re(C(t))    Im(C(t))\n")
@@ -83,23 +91,31 @@ println("Reference energy: ", ref_expval)
 #- - - - - PHASE CORRECTION (ONLY WHEN REF STATE IS ALSO AN EIGENSTATE) - - - - -
 # SIGNAL PROCESSING multiply by exp(-iE_0t) to correct signal
 Ek = ref_expval
+signalc = rRESc .+ 1im * iRESc;
 signal = rRES .+ 1im * iRES;
+
 phase = exp.(1im * Ek .* tgrid); #-1 is the eigenvalue associated with the eigenvector (|0>)
 
 #corrected signal F(t) = exp(-iE_0t)*C(t)
+Fc = phase .* signalc
 F = phase .* signal
 
 # Print C(t) results
-plt2 = plot(tgrid, real(F), lw=2, #seriestype=:scatter,
-          label="Re(F(t), th=$evol_thresh")
-plt2 = plot!(tgrid, imag(F), lw=2, #seriestype=:scatter,
-          label="Im(F(t), th=$evol_thresh")
+plt2 = plot(tgrid, real(Fc), lw=2, seriestype=:scatter, color=:red,
+          label="corr Re(F(t), th=$evol_thresh")
+#plt2 = plot!(tgrid, imag(Fc), lw=2, seriestype=:scatter,
+#          label="corr Im(F(t), th=$evol_thresh")
 
+plt2 = plot!(tgrid, real(F), lw=2, #seriestype=:scatter,
+          label="Re(F(t), th=$evol_thresh", color=:black)
+#plt2 = plot!(tgrid, imag(F), lw=2, #seriestype=:scatter,
+ #         label="Im(F(t), th=$evol_thresh")
+          
 xlabel!(plt2, "Time"); ylabel!(plt2, "exp(-iE_t) * < O(0)O(t) >")
-savefig(plt2, "/Users/admin/VSCProjects/QuantumChemQC/QSP/QSP_H2_deterministic_F_$evol_thresh.pdf")
+savefig(plt2, "/Users/admin/VSCProjects/QuantumChemQC/QSP/H2_PP_F_comparison_$evol_thresh.pdf")
 
-println("- - - Corrected signal  - - - ")
-@printf("dt   Re(F(t))    Im(F(t))\n")
-for (i,interval) in enumerate(tgrid)
-    @printf("%.4f   %.6f   %.6f\n", interval, real(F[i]), imag(F[i]))
-end
+#println("- - - Corrected signal  - - - ")
+#@printf("dt   Re(F(t))    Im(F(t))\n")
+#for (i,interval) in enumerate(tgrid)
+#    @printf("%.4f   %.6f   %.6f\n", interval, real(F[i]), imag(F[i]))
+#end

@@ -38,6 +38,7 @@ end
 """
 Pauli-propagation time series with pruning controls.
 Using First order Trotterization
+THIS FUNCTION INCLUDES THE PRUNING ERROR CORRECTION.
 Arguments:
 - generators, angles  : from UnitaryPruning.heisenberg_1D(...)
 - o                   : PauliSum (used as both V and W by default)
@@ -106,6 +107,71 @@ function QSP_evolution_op(ket, o::PauliSum{N,T}, H::PauliSum{N,T}, n_intervals, 
     
     return rCtvals, iCtvals, tgrid
 end
+
+"""
+Pauli-propagation time series with pruning controls.
+Using First order Trotterization
+THIS FUNCTION DO NOT INCLUDE THE PRUNING ERROR CORRECTION.
+Arguments:
+- generators, angles  : from UnitaryPruning.heisenberg_1D(...)
+- o                   : PauliSum (used as both V and W by default)
+- ket                 : state for estimator (your current approach)
+- thresh              : magnitude threshold (|coeff|)
+- n_intervals : number of intervals,  n_intervals =tot_time/dt
+"""
+function QSP_evolution_op_no_corr(ket, o::PauliSum{N,T}, H::PauliSum{N,T}, n_intervals, dt;
+                      thresh::Float64=1e-3) where {N,T}
+
+    #err = Vector{Float64}([])
+    Wt = deepcopy(o)        # evolve W ≡ U*OU
+    W  = deepcopy(o)        # initial operator 
+    rCtvals = Vector{Float64}([])#(undef, nsamp) # vector for C(t) values storing
+    iCtvals = Vector{Float64}([])#(undef, nsamp)
+
+    # t = 0 
+    WW = W*W
+    expval0 = expectation_value(WW, ket)
+
+    C0real = real(expval0)
+    C0imag = imag(expval0)
+
+    push!(rCtvals, C0real)
+    push!(iCtvals, C0imag)
+
+    # Extract Pauli strings and coefficients
+    generators, angles = gens_from_H(H)
+    #@printf("Hamiltonian has %d terms \n", length(coeffs))
+
+    nt = length(angles)                            
+    println("Total Rotations:", nt * n_intervals)
+    # Evolve W under Trotterization
+
+    #accumulated_error = 0
+    for ki in 1:n_intervals
+            # Trotter terms U_1 U_2, ..., U_k
+            for j in 1:nt
+                # Access to the evolution of the operator by H = Sum(theta_i * P_i)
+                Pi  = generators[j]
+                theta = 2 * dt * angles[j]
+                pb = PauliBasis(Pi)
+                evolve!(Wt, pb, theta)
+                # --- POST pruning ---
+                coeff_clip!(Wt, thresh=thresh)
+            end           
+            
+            WWt = W * Wt #(at time interval)
+            expval = expectation_value(WWt, ket) # Contraction with reference ket
+            Ctreal = real(expval) # Real part of C(t) = <O(0) * (U_i^ O U_i)>
+            Ctimag = imag(expval)
+            push!(rCtvals, Ctreal)
+            push!(iCtvals, Ctimag)
+    end
+
+    tgrid = collect(range(0.0, stop=n_intervals*dt, length=length(rCtvals)))
+    
+    return rCtvals, iCtvals, tgrid
+end
+
 
 """
     qdrift_propagator(H::PauliSum, t::Real, eps::Real;

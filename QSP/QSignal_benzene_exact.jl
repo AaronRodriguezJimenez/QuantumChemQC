@@ -58,33 +58,43 @@ println("Reference state energy: ", Ek)
 #optimal_dt = 2*pi/abs(Ek - eHF)
 #println("Optimal dt: 2π/|Ek - eHF| = ", optimal_dt)
 
-# Time evolution unitaries:
-function Ut(Hmat, dt)
-    return exp(-im * dt * Hmat )
+# One-time diagonalization
+E = eigen(Hmat)
+V = E.vectors
+Λ = E.values
+
+# Transform state and operator to eigenbasis
+psi0 = V0
+psi0_eig = V' * psi0
+Oeig = V' * Omat * V
+
+function Ct_from_eigenbasis(t, psi0_eig, Oeig, Λ)
+    phase_forward  = exp.(-im * Λ * t)
+    phase_backward = exp.(+im * Λ * t)
+
+    tmp = phase_forward .* psi0_eig
+    tmp = Oeig * tmp
+    tmp = phase_backward .* tmp
+    tmp = Oeig * tmp
+    
+    return dot(conj(psi0_eig), tmp)
 end
 
 # Time grid
 # Define time evolution parameters
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
-k = 200
-t = 50.00
-dt = t/k
+k = 100
+t = 10.00
+dt = 0.2#t/k
 #dt = optimal_dt
 nsamp = Int(k) + 1
 tgrid = collect(range(0.0, stop=k*dt, length=nsamp))
 
 # Step 2: Compute C(t)
-W = deepcopy(Omat)
-Ct = Vector{ComplexF64}([])
+Ct = ComplexF64[]
 for time in tgrid
-    U = Ut(Hmat, time)
-    Udag = U'
-    UdagWU = Udag * W * U
-    WWt = W * UdagWU
-    res = V0' * WWt * V0
-   # res = res * (1/norm(res))
-    push!(Ct, res)
+    push!(Ct, Ct_from_eigenbasis(time, psi0_eig, Oeig, Λ))
 end
 
 rRES = real(Ct)
