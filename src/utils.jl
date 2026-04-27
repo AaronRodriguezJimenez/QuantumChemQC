@@ -131,3 +131,9 @@ function string_to_ket(bits::String)
     ket = Ket{N}(out)
     return ket, v, out
 end
+
+# Return a bitstring equivalent to a given PauliOperators Ket
+function ket_to_bitstring(ket::Ket{N}) where N
+    v = ket.v
+    return digits(v, base=2, pad=N)
+end

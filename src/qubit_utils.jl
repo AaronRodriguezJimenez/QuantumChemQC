@@ -639,4 +639,99 @@ function xyz_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true,
 
     return D
 end
+
+"""
+ Function that builds the HOMO-LUMO excitation operator based on a given input ket.
+ This function can retrieve a spin_conserving operator, based on the block or interlieved 
+ encoding used in the Hamiltonian construction. CURRENTLY WORKS FOR SINGLET REF. STATES
+ * * *
+ NOTE: Function in current development, based only in the alpha-channel excitation (spin conserving),
+       but it can contain the beta-channel excitation via uncommenting the lines below.
+ * * *
+"""
+function homo_lumo_excitation_op(ket::Ket{N}; spin_conserving=true, block=true) where N
+    coeff_thresh_clip = 1.0e-6
+    N_spatial = Int(N ÷ 2)
+
+    # --- INDEX MAPPING: block vs interleaved ---
+    if block
+        idx_alpha = p -> p
+        idx_beta  = p -> p + N_spatial
+    else
+        idx_alpha = p -> 2*p - 1
+        idx_beta  = p -> 2*p
+    end
     
+    # --- Operator cache ---
+    ops_dag = [QuantumChemQC.fermion_op(N, i, dagger=true) for i in 1:N]
+    ops_col = [QuantumChemQC.fermion_op(N, i, dagger=false) for i in 1:N]
+
+    #1) Read Ket occupations
+    v = ket.v
+    occ = digits(v, base=2, pad=N)  
+
+    #2) Determine HOMO and LUMO indices
+    function find_homo_lumo(idx_map)
+        occ_indices = Int[]
+        virt_indices = Int[]
+
+        for p in 1:N_spatial
+            i = idx_map(p)
+            if occ[i] == 1
+                push!(occ_indices, p)
+            else
+                push!(virt_indices, p)
+            end
+        end
+        
+        isempty(occ_indices) && return nothing
+        isempty(virt_indices) && return nothing
+
+        homo = maximum(occ_indices)
+        lumo = minimum(virt_indices)
+
+        return homo, lumo
+    end
+
+    #3) Build HOMO-LUMO excitation operator: O + h.c.
+    O = PauliSum(N, ComplexF64)
+    #Establish possible excitation based on spin_cons
+    if spin_conserving
+        # α channel
+        hl_alpha = find_homo_lumo(idx_alpha)
+        if hl_alpha !== nothing
+            h, l = hl_alpha
+            sum!(O, ops_dag[idx_alpha(l)] * ops_col[idx_alpha(h)])
+            sum!(O, ops_dag[idx_alpha(h)] * ops_col[idx_alpha(l)]) #h.c
+        end
+
+        # β channel
+        #hl_beta = find_homo_lumo(idx_beta)
+        #if hl_beta !== nothing
+        #    h, l = hl_beta
+        #    sum!(O, ops_dag[idx_beta(l)] * ops_col[idx_beta(h)])
+        #    sum!(O, ops_dag[idx_beta(h)] * ops_col[idx_beta(l)]) #h.c
+        #end
+
+    else
+        # Global HOMO/LUMO (ignore spin)
+        occ_indices = findall(x -> x ==1, occ)
+        virt_indices = findall(x -> x ==0, occ)
+        println("OCC indx ", occ_indices)
+        println("VIRT indx ", virt_indices)
+
+        if !isempty(occ_indices) && !isempty(virt_indices)
+            h = maximum(occ_indices)
+            l = minimum(virt_indices)
+
+            println("HOMO idx ", h)
+            println("LUMO idx ", l)
+
+            sum!(O, ops_dag[l] * ops_col[h])
+            sum!(O, ops_dag[h] * ops_col[l]) #h.c
+        end
+    end
+
+    coeff_clip!(O, thresh=coeff_thresh_clip)
+    return O
+end
