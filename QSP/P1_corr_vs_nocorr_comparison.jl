@@ -9,6 +9,7 @@ function run_H()
     data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz"
     data = npzread(data_path)
     H0 = data["hc"][1]
+    println("H0: ", H0)
     H1 = data["h1e"]
     H2 = data["h2e"]
 
@@ -41,12 +42,14 @@ n_intervals = 200
 t = 10.0
 dt = 0.1#t/n_intervals
 
-evol_thresh = 0.001 
+evol_thresh = 0.0001 
 rRESc, iRESc, tgridc = QuantumChemQC.QSP_evolution_op(ket, O, H, n_intervals, dt,
-                                                        thresh=evol_thresh)
+                                                        thresh=evol_thresh,
+                                                        checkfile="P1_checkfile")
 
 rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op_no_corr(ket, O, H, n_intervals, dt,
-                                                           thresh=evol_thresh)
+                                                           thresh=evol_thresh, 
+                                                           checkfile="P1_checkfile")
 
 # Number of snapshots actually returned
 nsnap = length(rRES)
@@ -66,12 +69,9 @@ plt = plot!(tgrid, rRES, lw=2, #seriestype=:scatter,
 xlabel!(plt, "Time"); ylabel!(plt, "< O(0)O(t) >")
 savefig(plt, "/Users/admin/VSCProjects/QuantumChemQC/QSP/P1_PP_comparison_$evol_thresh.pdf")
 
-println("- - - Sanity Check: |C(t)|^2 - - - ")
-@printf("idx    dt     Re(C(t))    Im(C(t))\n")
+@printf("dt     Re(C(t))    Im(C(t))\n")
 for (i,interval) in enumerate(tgrid)
-    normop2 = rRES[i]^2 + iRES[i]^2
-    normop = sqrt(normop2)
-    @printf("%.4f    %.6f    %.6f\n", interval, rRES[i], iRES[i])
+    @printf("%.4f    %.6f    %.6f\n", interval, rRESc[i], iRESc[i])
 end
 
 println("Initial eigenstate |0> ")
@@ -94,10 +94,11 @@ Ek = ref_expval
 signalc = rRESc .+ 1im * iRESc;
 signal = rRES .+ 1im * iRES;
 
-phase = exp.(1im * Ek .* tgrid); #-1 is the eigenvalue associated with the eigenvector (|0>)
 
 #corrected signal F(t) = exp(-iE_0t)*C(t)
-Fc = phase .* signalc
+phasec = exp.(1im * Ek .* tgridc);
+Fc = phasec .* signalc
+phase = exp.(1im * Ek .* tgrid);
 F = phase .* signal
 
 # Print C(t) results
@@ -114,8 +115,8 @@ plt2 = plot!(tgrid, real(F), lw=2, #seriestype=:scatter,
 xlabel!(plt2, "Time"); ylabel!(plt2, "exp(-iE_t) * < O(0)O(t) >")
 savefig(plt2, "/Users/admin/VSCProjects/QuantumChemQC/QSP/P1_PP_F_comparison_$evol_thresh.pdf")
 
-#println("- - - Corrected signal  - - - ")
-#@printf("dt   Re(F(t))    Im(F(t))\n")
-#for (i,interval) in enumerate(tgrid)
-#    @printf("%.4f   %.6f   %.6f\n", interval, real(F[i]), imag(F[i]))
-#end
+println("- - - Corrected signal  - - - ")
+@printf("dt   Re(F(t))    Im(F(t))\n")
+for (i,interval) in enumerate(tgrid)
+    @printf("%.4f   %.6f   %.6f\n", interval, real(F[i]), imag(F[i]))
+end

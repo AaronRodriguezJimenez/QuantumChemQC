@@ -24,7 +24,7 @@ function run_H()
     #H  = QuantumChemQC.PauliSum_hamiltonian(n, H0, H1, H2)
     @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=false)
 
-    return H
+    return 2*H
 end
 
 # - - - Get Molecular Hamiltonian
@@ -38,16 +38,18 @@ display(O*ket)
 # Define time evolution parameters
 # Circuit divided in k layers
 # Thus total time (t) is divided in dt = t/k time intervals
-n_intervals = 400
+n_intervals = 200
 t = 100.0
-dt = t/n_intervals
+dt = 0.25#t/n_intervals
 
 evol_thresh = 0.00001 
 rRESc, iRESc, tgridc = QuantumChemQC.QSP_evolution_op(ket, O, H, n_intervals, dt,
                                                         thresh=evol_thresh)
 
 rRES, iRES, tgrid = QuantumChemQC.QSP_evolution_op_no_corr(ket, O, H, n_intervals, dt,
-                                                           thresh=evol_thresh)
+                                                           thresh=evol_thresh, 
+                                                           max_weight = 4,
+                                                           checkfile="P1_checkfile")
 
 # Number of snapshots actually returned
 nsnap = length(rRES)

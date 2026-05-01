@@ -36,7 +36,7 @@ export Molecules
 export Lattices, LatticeBond, Lattice
 export lattice2graph, dec2bin, bin2dec, bin2bonds!
 export square_lattice
-export coeff_clip!
+export coeff_clip!, weight_clip!, majorana_weight_clip!
 
 
 end # module QuantumChemQC
