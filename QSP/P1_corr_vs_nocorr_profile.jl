@@ -62,7 +62,7 @@ QuantumChemQC.QSP_evolution_op_no_corr(ket, O, H, n_intervals, dt;
 println("Warm-up complete.\n")
 
 # ============================================================
-# ⏱️ BENCHMARKING (TIME + MEMORY)
+# BENCHMARKING (TIME + MEMORY)
 # ============================================================
 
 println("========== BENCHMARKING ==========")
@@ -99,7 +99,7 @@ labels = ["With corrections", "No corrections"]
 bar(labels, times, ylabel="Time (ms)", title="Runtime Comparison")
 
 # ============================================================
-# 🔍 PROFILING (WHERE TIME IS SPENT)
+# PROFILING (WHERE TIME IS SPENT)
 # ============================================================
 
 println("\n========== PROFILING ==========")
@@ -138,3 +138,55 @@ Profile.print()
 
 # Optional:
 # ProfileView.view()
+
+xs = Int[]
+ys_corr = Float64[]
+ys_nocorr = Float64[]
+
+for n_intervals in round.(Int, range(100, stop=3000, length=15))
+    println("n_intervals: $n_intervals")
+
+    t_corr = @benchmark QuantumChemQC.QSP_evolution_op(
+        $ket, $O, $H, $n_intervals, $dt;
+        thresh=$evol_thresh,
+        checkfile=nothing   #disable I/O
+    ) seconds=1
+
+    t_nocorr = @benchmark QuantumChemQC.QSP_evolution_op_no_corr(
+        $ket, $O, $H, $n_intervals, $dt;
+        thresh=$evol_thresh,
+        checkfile=nothing
+    ) seconds=1
+
+    push!(xs, n_intervals)
+
+    # ns → seconds
+    push!(ys_corr, minimum(t_corr).time / 1e9)
+    push!(ys_nocorr, minimum(t_nocorr).time / 1e9)
+end
+
+plot(xs, ys_corr,
+    label="With corrections",
+    xlabel="n_intervals",
+    ylabel="Time (s)",
+    lw=2)
+
+plot!(xs, ys_nocorr, label="No corrections", lw=2)
+
+ys_alloc = Float64[]
+
+for n_intervals in xs
+    t = @benchmark QuantumChemQC.QSP_evolution_op(
+        $ket, $O, $H, $n_intervals, $dt;
+        thresh=$evol_thresh,
+        checkfile=nothing
+    ) seconds=1
+
+    push!(ys_alloc, minimum(t).memory / 1024^2)  # MB
+end
+
+plot(xs, ys_alloc,
+    label="Memory (MB)",
+    xlabel="n_intervals",
+    ylabel="Memory usage",
+    lw=2)
