@@ -37,6 +37,8 @@ O += Pauli(12, X=[1,2,3,7,8,10])
 O += Pauli(12, X=[1,2,3,7,9,10])
 O += Pauli(12, X=[1,2,3,7,8,11])
 H = run_H()
+
+display(H)
 Hmat = Matrix(H)
 Omat = Matrix(O)
 ket, _ = QuantumChemQC.string_to_ket("000000000000")
