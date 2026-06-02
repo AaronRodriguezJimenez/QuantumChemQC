@@ -41,7 +41,7 @@ using NPZ
 # Small helpers
 # ------------------------------------------------------------
 
-coeff_clip!(ps; thresh=1e-16) = filter!(p -> abs(p.second) > thresh, ps)
+#coeff_clip!(ps; thresh=1e-16) = filter!(p -> abs(p.second) > thresh, ps)
 
 function string_to_ket(bits::AbstractString)
     idx = 0
@@ -54,83 +54,6 @@ function string_to_ket(bits::AbstractString)
 end
 
 neighbor(site::Int, N::Int) = site == N ? 1 : site + 1
-
-# ------------------------------------------------------------
-# Hamiltonian / Trotter construction
-# ------------------------------------------------------------
-
-function trott_unitary_sequence_Heisenberg(o::Union{Pauli{N}, PauliSum{N}};
-    Jx=1.0, Jy=1.0, Jz=1.0, gx=0.1, gy=0.1, gz=0.1, k=10) where {N}
-
-    generators = Pauli{N}[]
-    parameters = Float64[]
-
-    for _ in 1:k
-        for site in 1:N
-            nxt = neighbor(site, N)
-
-            push!(generators, Pauli(N, X=[site, nxt]))
-            push!(parameters, -Jx)
-
-            push!(generators, Pauli(N, Y=[site, nxt]))
-            push!(parameters, -Jy)
-        end
-
-        for site in 1:N
-            nxt = neighbor(site, N)
-            push!(generators, Pauli(N, Z=[site, nxt]))
-            push!(parameters, -Jz)
-        end
-
-        if gx != 0.0
-            for site in 1:N
-                push!(generators, Pauli(N, X=[site]))
-                push!(parameters, -gx)
-            end
-        end
-
-        if gy != 0.0
-            for site in 1:N
-                push!(generators, Pauli(N, Y=[site]))
-                push!(parameters, -gy)
-            end
-        end
-
-        if gz != 0.0
-            for site in 1:N
-                push!(generators, Pauli(N, Z=[site]))
-                push!(parameters, -gz)
-            end
-        end
-    end
-
-    return generators, parameters
-end
-
-function heisenberg_1D(N, Jx, Jy, Jz; x=0.0, y=0.0, z=0.0)
-    H = PauliSum(N, Float64)
-
-    for site in 1:N
-        nxt = neighbor(site, N)
-        H += -Jx * Pauli(N, X=[site, nxt])
-        H += -Jy * Pauli(N, Y=[site, nxt])
-        H += -Jz * Pauli(N, Z=[site, nxt])
-    end
-
-    for site in 1:N
-        if x != 0.0
-            H += x * Pauli(N, X=[site])
-        end
-        if y != 0.0
-            H += y * Pauli(N, Y=[site])
-        end
-        if z != 0.0
-            H += z * Pauli(N, Z=[site])
-        end
-    end
-
-    return coeff_clip!(H)
-end
 
 # ------------------------------------------------------------
 # Pauli propagation
@@ -170,20 +93,48 @@ end
 
 weight(p::PauliBasis) = count_ones(p.x | p.z)
 
+"""
+ Compute the Majorana weight of a Pauli string.
+"""
+function majorana_weight(Pb::Union{PauliBasis{N}, Pauli{N}}) where N
+    w = 0
+    control = true
+    # tmp = Pb.z & ~Pb.x  # Bitwise AND with bitwise NOT
+    Ibits = ~(Pb.z|Pb.x)
+    Zbits = Pb.z & ~Pb.x
+
+    for i in reverse(1:N)  # Iterate from N down to 1
+        xbit = (Pb.x >> (i - 1)) & 1 != 0
+        Zbit = (Zbits >> (i - 1)) & 1 != 0
+        Ibit = (Ibits >> (i - 1)) & 1 != 0
+        #println("i=$i, xbit=$xbit, Zbit=$Zbit, Ibit=$Ibit, control=$control, w=$w")
+        if Zbit && control || Ibit && !control
+            w += 2
+        elseif xbit
+            control = !control
+            w += 1
+        end
+    end
+    return w
+end
+
 function weight_profile(W::PauliSum{N, T}) where {N, T}
-    hist = zeros(Float64, N + 1)
+    #hist = zeros(Float64, N + 1)
+    hist = zeros(Float64, 2*N + 1)
     total = 0.0
 
     for (P, c) in W
-        k = weight(P)
+        #k = weight(P)
+        k = majorana_weight(P)
         a2 = abs2(c)
         hist[k + 1] += a2
         total += a2
     end
-
-    if total > 0
-        hist ./= total
-    end
+    
+    # Normalization
+#    if total > 0
+#        hist ./= total
+#    end
 
     return hist
 end
@@ -326,10 +277,10 @@ function evolution_op(ket, o::PauliSum{N, T}, H::PauliSum{N, T}, n_intervals, dt
             θ = 2 * dt * angles[j]
             evolve!(Ot, generators[j], θ)
 
-            coeff_clip!(Ot; thresh=1e-12)
+            QuantumChemQC.coeff_clip!(Ot; thresh=1e-12)
             before = expectation_value(O0 * Ot, ket)
 
-            coeff_clip!(Ot; thresh=thresh)
+            QuantumChemQC.coeff_clip!(Ot; thresh=thresh)
             after = expectation_value(O0 * Ot, ket)
 
             accumulated_error += after - before
@@ -363,8 +314,8 @@ function plot_weight_heatmap(w_snapshots; tgrid=nothing)
         0:nweights-1,
         W,
         xlabel = "time",
-        ylabel = "Pauli weight",
-        title = "Pauli Weight Dynamics",
+        ylabel = "Weight",
+        title = "L2 norm Weight Dynamics",
         #legend = false
     )
 end
@@ -684,7 +635,9 @@ function main_benchmark()
 
     # PP data
     # Get Molecular Hamiltonian
-    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz"
+    #data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz" #planar, 2 orbitals
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/C2H4_rotation/P1-RHF_integrals.npz" #twisted, 2 orbitals
+    #data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/C2H4_rotation/0.0_tensors.npz" #14 orbitals,
     data = npzread(data_path)
     H0 = data["hc"][1]
     println("H0: ", H0)
@@ -697,16 +650,23 @@ function main_benchmark()
     println("H2 shape: ", size(H2))
     println(typeof(H2))
     Norbs = size(H1,1)  # number of spatial orbitals
-    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=true)
+    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=false)
     
-    O = Pauli(4, X=[1,3])
-    O = PauliSum(O)
-    #O += Pauli(4)
-    #O += Pauli(4, X=[2,3])
-    ket, _ = QuantumChemQC.string_to_ket("0000")
+    # - - - Define Reference ket
+    #ket, _  = QuantumChemQC.string_to_ket("1010") #Block
+    ket, _  = QuantumChemQC.string_to_ket("1100") #Interleaved
+    println("Initial state Expectation Value:")
+    e1 = expectation_value(H,ket)
+    @printf("E(0) = %.6f\n", e1)
+
+    # - - - Define Excitation Operator
+    O = QuantumChemQC.homo_lumo_excitation_op(ket, spin_conserving=true, block=false)
+    println("HOMO-LUMO excitation operator:")
+    display(O)
     
     time_step = 0.5
-    pp = run_pp_snapshots(ket, O, H, 250, time_step; threshold=1e-10)
+    n_intervals = 250
+    pp = run_pp_snapshots(ket, O, H, n_intervals, time_step; threshold=1e-10)
     shuffled_pp = shuffled = shuffled_snapshots(pp.w_snapshots; seed=4)
 
     # Benchmark all cases
@@ -728,14 +688,14 @@ function main_benchmark()
     end
 
     # Plots
-    p_fit = plot_benchmark_metric(cases; metric=:fit_error)
-    p_rank95, p_rank99 = plot_benchmark_ranks(cases)
-    p_sv = plot_singular_values_vs_q(cases)
+    #p_fit = plot_benchmark_metric(cases; metric=:fit_error)
+    #p_rank95, p_rank99 = plot_benchmark_ranks(cases)
+    #p_sv = plot_singular_values_vs_q(cases)
 
-    display(p_fit)
-    display(p_rank95)
-    display(p_rank99)
-    display(p_sv)
+    #display(p_fit)
+    #display(p_rank95)
+    #display(p_rank99)
+    #display(p_sv)
 
     # PP-specific diagnostics
     display(plot_weight_heatmap(pp.w_snapshots; tgrid=pp.tgrid))
@@ -757,8 +717,10 @@ function signals()
     ar1_raw        = ar1_signal(m, 3; α=0.9, seed=3)
     shuffled_raw   = shuffled_snapshots(structured_raw; seed=4)
     # PP data
-    # Get Molecular Hamiltonian
-    data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz"
+    # Get Molecular Hamiltonian C2H4 rotation
+    #data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/P1-RHF_integrals.npz" #planar, 2 orbitals
+    data_path = "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/C2H4_rotation/P1-RHF_integrals.npz" #twisted, 2 orbitals
+    #data_path =  "/Users/admin/PycharmProjects/pyQCTools/QSP/Ethylene_and_polyenes/C2H4_rotation/0.0_tensors.npz" #14 orbitals
     data = npzread(data_path)
     H0 = data["hc"][1]
     println("H0: ", H0)
@@ -771,13 +733,19 @@ function signals()
     println("H2 shape: ", size(H2))
     println(typeof(H2))
     Norbs = size(H1,1)  # number of spatial orbitals
-    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=true)
+    @time H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=false)
     
-    O = Pauli(4, X=[1,3])
-    O = PauliSum(O)
-    #O += Pauli(4)
-    #O += Pauli(4, X=[2,3])
-    ket, _ = QuantumChemQC.string_to_ket("0000")
+    # - - - Define Reference ket
+    #ket, _  = QuantumChemQC.string_to_ket("1010") #Block
+    ket, _  = QuantumChemQC.string_to_ket("1100") #Interleaved
+    println("Initial state Expectation Value:")
+    e1 = expectation_value(H,ket)
+    @printf("E(0) = %.6f\n", e1)
+
+    # - - - Define Excitation Operator
+    O = QuantumChemQC.homo_lumo_excitation_op(ket, spin_conserving=true, block=false)
+    println("HOMO-LUMO excitation operator:")
+    display(O)
 
     pp = run_pp_snapshots(ket, O, H, 250, 0.5; threshold=1e-10)
 
@@ -802,10 +770,44 @@ function signals()
         ylabel="Value")
 
     display(combined_plot)
-    return combined_plot
+    return #combined_plot
 
 end
 
 # run 
 results = main_benchmark()
 signals()
+
+#=
+data_path = "/Users/admin/PycharmProjects/pyQCTools/DBF//N2_tensors_rhf_stable/1.1_tensors.npz" #Boys canonical localized
+data = npzread(data_path)
+Norbs = size(data["h1e"],1)  # number of spatial orbitals
+H = QuantumChemQC.molecular_hamiltonian(Norbs, data_path, NOI=true, block=false)
+QuantumChemQC.coeff_clip!(H, thresh=1e-6)
+println("Hamiltonian terms:")
+for (P, c) in H
+        k = majorana_weight(P)
+        a2 = abs2(c)
+        println("P: ", P, " c: ", c, " |c|^2: ", a2, " Mweight: ", k)
+end
+
+
+# - - - Define Reference ket
+#ket, _  = QuantumChemQC.string_to_ket("11111110001111111000") #Block
+ket, _  = QuantumChemQC.string_to_ket("11111111111111000000") #Interleaved
+println("Initial state Expectation Value:")
+e1 = expectation_value(H,ket)
+@printf("E(0) = %.6f\n", e1)
+
+# - - - Define Excitation Operator
+O = QuantumChemQC.homo_lumo_excitation_op(ket, spin_conserving=true, block=false)
+println("HOMO-LUMO excitation operator:")
+display(O)
+
+println("O terms:")
+for (P, c) in O
+        k = majorana_weight(P)
+        a2 = abs2(c)
+        println("P: ", P, " |c|^2: ", a2, " Mweight: ", k)
+end
+=#
