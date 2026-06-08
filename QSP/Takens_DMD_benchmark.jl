@@ -38,86 +38,12 @@ using NPZ
 #
 #"""
 
-# Small helpers
 # ------------------------------------------------------------
-
-#coeff_clip!(ps; thresh=1e-16) = filter!(p -> abs(p.second) > thresh, ps)
-
-function string_to_ket(bits::AbstractString)
-    idx = 0
-    for (i, ch) in enumerate(bits)
-        if ch == '1'
-            idx += 1 << (i - 1)
-        end
-    end
-    return Ket{length(bits)}(idx), idx
-end
-
 neighbor(site::Int, N::Int) = site == N ? 1 : site + 1
-
-# ------------------------------------------------------------
-# Pauli propagation
-# ------------------------------------------------------------
-
-function evolve!(O::PauliSum{N, T}, G::PauliBasis{N}, θ::Real) where {N, T}
-    cθ = cos(θ)
-    sθ = 1im * sin(θ)
-    added = PauliSum(N)
-
-    for (p, c) in O
-        if !PauliOperators.commute(p, G)
-            tmp = c * sθ * G * p
-            key = PauliBasis(tmp)
-            added[key] = get(added, key, 0.0) + PauliOperators.coeff(tmp)
-            O[p] *= cθ
-        end
-    end
-
-    sum!(O, added)
-    return O
-end
-
-function extract_hamiltonian_coeffs_and_ops(H::PauliSum{N, T}) where {N, T}
-    ops = PauliBasis{N}[]
-    coeffs = Float64[]
-    for (p, c) in H
-        push!(ops, p)
-        push!(coeffs, float(c))
-    end
-    return ops, coeffs
-end
 
 # ------------------------------------------------------------
 # Weight diagnostics
 # ------------------------------------------------------------
-
-weight(p::PauliBasis) = count_ones(p.x | p.z)
-
-"""
- Compute the Majorana weight of a Pauli string.
-"""
-function majorana_weight(Pb::Union{PauliBasis{N}, Pauli{N}}) where N
-    w = 0
-    control = true
-    # tmp = Pb.z & ~Pb.x  # Bitwise AND with bitwise NOT
-    Ibits = ~(Pb.z|Pb.x)
-    Zbits = Pb.z & ~Pb.x
-
-    for i in reverse(1:N)  # Iterate from N down to 1
-        xbit = (Pb.x >> (i - 1)) & 1 != 0
-        Zbit = (Zbits >> (i - 1)) & 1 != 0
-        Ibit = (Ibits >> (i - 1)) & 1 != 0
-        #println("i=$i, xbit=$xbit, Zbit=$Zbit, Ibit=$Ibit, control=$control, w=$w")
-        if Zbit && control || Ibit && !control
-            w += 2
-        elseif xbit
-            control = !control
-            w += 1
-        end
-    end
-    return w
-end
-
 function weight_profile(W::PauliSum{N, T}) where {N, T}
     #hist = zeros(Float64, N + 1)
     hist = zeros(Float64, 2*N + 1)
@@ -125,7 +51,7 @@ function weight_profile(W::PauliSum{N, T}) where {N, T}
 
     for (P, c) in W
         #k = weight(P)
-        k = majorana_weight(P)
+        k = QuantumChemQC.majorana_weight(P)
         a2 = abs2(c)
         hist[k + 1] += a2
         total += a2
@@ -160,76 +86,6 @@ struct DMDResult
     residual_rel::Float64
 end
 
-function fit_dmd(X::AbstractMatrix{<:Real}; r::Union{Nothing,Int}=nothing, tol=1e-10)
-    X1 = X[:, 1:end-1]
-    X2 = X[:, 2:end]
-
-    A_ls = Matrix(X2 * pinv(X1))
-    residual_rel = norm(X2 - A_ls * X1) / max(norm(X2), eps())
-
-    F = svd(X1; full=false)
-    U, s, V = F.U, F.S, F.V
-
-    if r === nothing
-        r = max(count(>(tol * s[1]), s), 1)
-    else
-        r = min(r, length(s))
-    end
-
-    Ur = U[:, 1:r]
-    sr = s[1:r]
-    Vr = V[:, 1:r]
-
-    Sinv = Diagonal(1.0 ./ sr)
-    A_tilde = Matrix(Ur' * X2 * Vr * Sinv)
-
-    eig = eigen(A_tilde)
-    λ = eig.values
-    W = eig.vectors
-
-    Φ = Matrix(X2 * Vr * Sinv * W)
-    b = Φ \ complex.(X[:, 1])
-
-    return DMDResult(A_ls, A_tilde, Φ, λ, b, s, residual_rel)
-end
-
-function print_dmd_summary(res::DMDResult; dt::Real=1.0, topk::Int=5)
-    λ = res.evals
-    growth = log.(abs.(λ)) ./ dt
-    freq = angle.(λ) ./ dt
-    idx = sortperm(abs.(λ), rev=true)
-
-    println("---- DMD summary ----")
-    println("relative LS residual = $(res.residual_rel)")
-    println("numerical rank       = $(size(res.A_tilde, 1))")
-    println("top singular values   = ", res.singular_values[1:min(end, topk)])
-
-    println("\nDominant modes:")
-    for j in 1:min(topk, length(idx))
-        i = idx[j]
-        println("  λ[$i] = $(λ[i])")
-        println("      |λ| = $(abs(λ[i]))")
-        println("      growth rate = $(growth[i])")
-        println("      frequency    = $(freq[i])")
-        println("      amplitude    = $(res.amplitudes[i])")
-    end
-end
-
-function delay_embed(snapshots::Vector{<:AbstractVector}, q::Int)
-    m = length(snapshots)
-    d = length(snapshots[1])
-    ncols = m - q + 1
-    X = zeros(Float64, d * q, ncols)
-
-    for k in 1:ncols
-        for j in 1:q
-            X[(j-1)*d + 1 : j*d, k] .= snapshots[k + j - 1]
-        end
-    end
-
-    return X
-end
-
 function dmd_bootstrap(snapshots::Vector{<:AbstractVector}; B::Int=100, r::Union{Nothing,Int}=nothing, seed::Int=1)
     rng = MersenneTwister(seed)
     m = length(snapshots)
@@ -239,7 +95,7 @@ function dmd_bootstrap(snapshots::Vector{<:AbstractVector}; B::Int=100, r::Union
         lo = rand(rng, 1:m-3)
         hi = rand(rng, lo+2:m)
         Xb = hcat(snapshots[lo:hi]...)
-        evals[b] = fit_dmd(Xb; r=r).evals
+        evals[b] = QuantumChemQC.fit_dmd(Xb; r=r).evals
     end
 
     return evals
@@ -265,7 +121,7 @@ function evolution_op(ket, o::PauliSum{N, T}, H::PauliSum{N, T}, n_intervals, dt
     push!(corr_real, real(c0))
     push!(corr_imag, imag(c0))
 
-    generators, angles = extract_hamiltonian_coeffs_and_ops(H)
+    generators, angles = QuantumChemQC.gens_from_H(H)
     nt = length(angles)
 
     println("Total Rotations: ", nt * n_intervals)
@@ -275,7 +131,7 @@ function evolution_op(ket, o::PauliSum{N, T}, H::PauliSum{N, T}, n_intervals, dt
 
         for j in 1:nt
             θ = 2 * dt * angles[j]
-            evolve!(Ot, generators[j], θ)
+            QuantumChemQC.evolve!(Ot, generators[j], θ)
 
             QuantumChemQC.coeff_clip!(Ot; thresh=1e-12)
             before = expectation_value(O0 * Ot, ket)
@@ -403,51 +259,6 @@ function time_series_metrics(snapshots::Vector{<:AbstractVector})
 end
 
 # ------------------------------------------------------------
-# Delay embedding
-# ------------------------------------------------------------
-
-"""
-Takens-style delay embedding.
-Each column is [x_t; x_{t+1}; ...; x_{t+q-1}].
-"""
-function delay_embed(snapshots::Vector{<:AbstractVector}, q::Int)
-    m = length(snapshots)
-    d = length(snapshots[1])
-    @assert q >= 1 "q must be at least 1"
-    @assert m >= q "need at least q snapshots"
-
-    ncols = m - q + 1
-    X = zeros(Float64, d * q, ncols)
-
-    for k in 1:ncols
-        for j in 1:q
-            X[(j-1)*d + 1 : j*d, k] .= snapshots[k + j - 1]
-        end
-    end
-
-    return X
-end
-
-embed_snapshots(snapshots::Vector{<:AbstractVector}; q::Int=1) = q == 1 ? hcat(snapshots...) : delay_embed(snapshots, q)
-
-function embed_fit_summary(snapshots::Vector{<:AbstractVector}; q::Int=1, r::Union{Nothing,Int}=2)
-    X = embed_snapshots(snapshots; q=q)
-    res = fit_dmd(X; r=r)
-    X1 = X[:, 1:end-1]
-    X2 = X[:, 2:end]
-    rel_fit = norm(X2 - res.A_ls * X1) / max(norm(X2), eps())
-    rank95 = dominant_rank(res.singular_values; energy=0.95)
-    rank99 = dominant_rank(res.singular_values; energy=0.99)
-    return (
-        X = X,
-        res = res,
-        rel_fit = rel_fit,
-        rank95 = rank95,
-        rank99 = rank99,
-    )
-end
-
-# ------------------------------------------------------------
 # Signal generators
 # ------------------------------------------------------------
 
@@ -524,8 +335,8 @@ function benchmark_signal(name::String, snapshots::Vector{<:AbstractVector}; dt 
             continue
         end
 
-        out = embed_fit_summary(snapshots; q=q, r=r)
-        print_dmd_summary(out.res; dt=dt, topk=5) # Summary for dominant topk modes
+        out = QuantumChemQC.embed_fit_summary(snapshots; q=q, r=r)
+        QuantumChemQC.print_dmd_summary(out.res; dt=dt, topk=5) # Summary for dominant topk modes
         
         push!(fit_error, out.rel_fit)
         push!(rank95, out.rank95)

@@ -27,8 +27,7 @@ include("molecules.jl")
 include("evolve.jl")
 include("qsp.jl")
 
-using .QCUtils
-using .Lattices                  # make it accessible inside QuantumChemQC
+using .QCUtils     # make it accessible inside QuantumChemQC
 using .Molecules
 
 export FermionOp, FermionOperator

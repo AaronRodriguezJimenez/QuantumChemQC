@@ -3,7 +3,25 @@ using JLD2
 """
  # # # Operator evolution related functions
 """
-function evolve!(O::PauliSum{N, T}, G::PauliBasis{N}, θ::Real) where {N,T}
+function evolve!(O::PauliSum{N,T}, G::PauliBasis{N}, θ::Real) where {N,T}
+    cθ = cos(θ)
+    sθ = 1im * sin(θ)
+    added = PauliSum(N)
+
+    for (p, c) in O
+        if !PauliOperators.commute(p, G)
+            tmp = c * sθ * G * p
+            key = PauliBasis(tmp)
+            added[key] = get(added, key, 0.0) + PauliOperators.coeff(tmp)
+            O[p] *= cθ
+        end
+    end
+
+    sum!(O, added)
+    return O
+end
+
+function old_evolve!(O::PauliSum{N, T}, G::PauliBasis{N}, θ::Real) where {N,T}
     _cos = cos(θ)
     _sin = 1im*sin(θ)
     sin_branch = PauliSum(N)
