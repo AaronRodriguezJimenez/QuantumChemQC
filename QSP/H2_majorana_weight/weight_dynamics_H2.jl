@@ -51,6 +51,7 @@ end
 
 """
  Entropy of the Majorana-weight distribution.
+ How broadly the operator spreads accross Majorana weights.
  Not the entropy of the full propagated operator over
  individual Pauli strings.
 """
@@ -134,9 +135,15 @@ function run_single_distance(
     z_qubit::Int = 1,
     block::Bool = false,
     NOI::Bool = false,
+    UNRESTRICTED::Bool = false,
 )
     data = npzread(data_path)
-    H1 = data["h1e"]
+    if UNRESTRICTED
+        @printf("Using UNRESTRICTED data for R = %.6f\n", R)
+        H1 = data["h1_a"]
+    else
+        H1 = data["h1e"]
+    end
     Norbs = size(H1, 1)
     Nqubits = 2 * Norbs
 
@@ -145,12 +152,22 @@ function run_single_distance(
     @printf("Running R = %.6f, Nqubits = %d\n", R, Nqubits)
     println("Path: ", data_path)
 
-    H = QuantumChemQC.molecular_hamiltonian(
+    if UNRESTRICTED
+        println("Building UNRESTRICTED Hamiltonian")
+        H = QuantumChemQC.molecular_hamiltonian_uhf(
+            Norbs, 
+            data_path,
+            NOI=NOI,
+            block=block)
+    else
+        println("Building RESTRICTED Hamiltonian")
+        H = QuantumChemQC.molecular_hamiltonian(
         Norbs,
         data_path,
         NOI = NOI,
-        block = block,
-    )
+        block = block)
+    end
+    
 
     O = PauliSum(Pauli(Nqubits, Z = [z_qubit]))
 
@@ -179,7 +196,9 @@ end
  Run a scan over multiple distances, given a list of (R, data_path) pairs.
 """
 function run_distance_scan(cases, cfg::PPConfig;
-             z_qubit::Int = 1, block::Bool = false, NOI::Bool = false)
+             z_qubit::Int = 1, block::Bool = false, 
+             NOI::Bool = false,
+             UNRESTRICTED::Bool = false,)
     
              scan = Dict{Float64,Any}()
 
@@ -191,6 +210,7 @@ function run_distance_scan(cases, cfg::PPConfig;
             z_qubit = z_qubit,
             block = block,
             NOI = NOI,
+            UNRESTRICTED = UNRESTRICTED,
         )
     end
 
@@ -309,8 +329,7 @@ end
 # DATA INPUT AND PARAMETERS
 # ============================================================
 
-const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/tensors"
-
+const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/tensors" # Canonical RHF
 const CASES = [
     (0.50, joinpath(BASE, "RHF_H2_R_0p5_tensors.npz"))
     (0.7414, joinpath(BASE, "RHF_H2_R_0p7414_tensors.npz"))
@@ -319,8 +338,42 @@ const CASES = [
     (2.00, joinpath(BASE, "RHF_H2_R_2p0_tensors.npz"))
     (2.50, joinpath(BASE, "RHF_H2_R_2p5_tensors.npz"))
     (3.00, joinpath(BASE, "RHF_H2_R_3p0_tensors.npz"))
-
 ]
+
+#=const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/uhf_tensors" # Canonical UHF
+const CASES = [
+    (0.50, joinpath(BASE, "UHF_H2_R_0p5_tensors.npz"))
+    (0.7414, joinpath(BASE, "UHF_H2_R_0p7414_tensors.npz"))
+    (1.00, joinpath(BASE, "UHF_H2_R_1p0_tensors.npz"))
+    (1.50, joinpath(BASE, "UHF_H2_R_1p5_tensors.npz"))
+    (2.00, joinpath(BASE, "UHF_H2_R_2p0_tensors.npz"))
+    (2.50, joinpath(BASE, "UHF_H2_R_2p5_tensors.npz"))
+    (3.00, joinpath(BASE, "UHF_H2_R_3p0_tensors.npz"))
+]=#
+
+#=const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/nuhf_tensors" # NATURAL UHF
+const CASES = [
+    (0.50, joinpath(BASE, "Natural_UHF_H2_R_0p5_tensors.npz"))
+    (0.7414, joinpath(BASE, "Natural_UHF_H2_R_0p7414_tensors.npz"))
+    (1.00, joinpath(BASE, "Natural_UHF_H2_R_1p0_tensors.npz"))
+    (1.50, joinpath(BASE, "Natural_UHF_H2_R_1p5_tensors.npz"))
+    (2.00, joinpath(BASE, "Natural_UHF_H2_R_2p0_tensors.npz"))
+    (2.50, joinpath(BASE, "Natural_UHF_H2_R_2p5_tensors.npz"))
+    (3.00, joinpath(BASE, "Natural_UHF_H2_R_3p0_tensors.npz"))
+
+]=#
+
+#=const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/nuccsd_tensors" # Natural UCCSD
+const CASES = [
+    (0.50, joinpath(BASE, "Natural_UCCSD_H2_R_0p5_tensors.npz"))
+    (0.7414, joinpath(BASE, "Natural_UCCSD_H2_R_0p7414_tensors.npz"))
+    (1.00, joinpath(BASE, "Natural_UCCSD_H2_R_1p0_tensors.npz"))
+    (1.50, joinpath(BASE, "Natural_UCCSD_H2_R_1p5_tensors.npz"))
+    (2.00, joinpath(BASE, "Natural_UCCSD_H2_R_2p0_tensors.npz"))
+    (2.50, joinpath(BASE, "Natural_UCCSD_H2_R_2p5_tensors.npz"))
+    (3.00, joinpath(BASE, "Natural_UCCSD_H2_R_3p0_tensors.npz"))
+
+]=#
 
 cfg = PPConfig(
     500,       # n_steps
@@ -332,16 +385,17 @@ cfg = PPConfig(
 scan = run_distance_scan(
     CASES,
     cfg;
-    z_qubit = 2,
+    z_qubit = 3,
     block = false,
     NOI = false,
+    UNRESTRICTED = false,
 )
 
 p_summary = plot_distance_scan_summary(scan)
 display(p_summary)
 savefig(p_summary, "majorana_distance_scan_summary.png")
 
-p_heat = plot_selected_heatmaps(scan; selected_Rs = [0.50, 0.7414, 2.00, 3.00])
+p_heat = plot_selected_heatmaps(scan; selected_Rs = [0.50, 0.7414, 1.50, 3.00])
 display(p_heat)
 savefig(p_heat, "majorana_weight_heatmaps_selected_R.png")
 
