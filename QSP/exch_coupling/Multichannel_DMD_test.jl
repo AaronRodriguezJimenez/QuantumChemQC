@@ -5,6 +5,7 @@ using Statistics
 using Plots
 using Printf
 using Random
+using NPZ
 
 # Here we attempt to track the dynamics of PP weight profiles using multichannel DMD / MODMD.
 # The idea is to treat the weight profile at each time as a multichannel snapshot, and apply DMD to this multichannel time series.
