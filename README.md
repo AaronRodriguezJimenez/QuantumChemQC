@@ -10,7 +10,7 @@ The current implementation is based on ideas and tools from [HartreeFock.jl](htt
 - Compute **molecular integrals** using Gaussian basis sets
 - Perform **Restricted Hartree–Fock (RHF)** calculations
 - Access to orbital energies, MO coefficients, Fock matrix, etc.
-- Integration with packages like [`PauliOperators.jl`](https://github.com/QuantumBFS/PauliOperators.jl) for qubit Hamiltonians
+- Integration with packages like [`PauliOperators.jl`](https://github.com/nmayhall/PauliOperators.jl) for efficient representation of Pauli strings and associated methods.
 - Modular structure: easily extensible for post-HF methods or quantum mapping
 
 ---
