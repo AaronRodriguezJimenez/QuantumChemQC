@@ -1,9 +1,11 @@
 #
 # Here we track the L2 norm of the majorana weight for H2
+# Instead of PP we use a Matrix-Liouville formulation.
 #
 using QuantumChemQC
 using PauliOperators
 using LinearAlgebra
+using SparseArrays
 using Statistics
 using Printf
 using Random
@@ -25,14 +27,23 @@ end
  Builds p_k(t) = sum_{P: majorana_weight(P) = k} |c_P(t)|², 
  the distribution of the majorana weight
 """
-function weight_profile(W::PauliSum{N,T}; normalize::Bool=true) where {N,T}
+function weight_profile(v::AbstractVector, ::Val{N}; normalize::Bool=true) where {N}
+    
+    D = Int(4)^N
+    @assert length(v)  == D
+
     hist = zeros(Float64, 2*N + 1)
     total = 0.0
 
-    for (P, c) in W
-        k = QuantumChemQC.majorana_weight(P)
+    for p in PauliBasis{N}
+        c = v[pauli_index(p)]
+
+        k = QuantumChemQC.majorana_weight(p)
+
         a2 = abs2(c)
+
         hist[k + 1] += a2
+        
         total += a2
     end
 
@@ -75,13 +86,64 @@ function time_series_metrics(snapshots::Vector{<:AbstractVector})
 end
 
 # ============================================================
-# Pauli Propagation and Metrics
+# Pauli coefficient-vector utilities
+# ============================================================
+
+@inline function pauli_index(p::PauliBasis{N}) where {N}
+    return Int(p.z + (p.x << N) + 1)
+end
+
+@inline function pauli_weight(p::PauliBasis)
+    return count_ones(p.z | p.x)
+end
+
+function coeff_vector(ps::PauliSum{N}; T=ComplexF64) where {N}
+    D = Int(4)^N
+    v = zeros(T, D)
+
+    for (p, c) in ps
+        v[pauli_index(p)] += convert(T, c)
+    end
+
+    return v
+end
+
+function singleton_paulisum(p::PauliBasis{N}; T=ComplexF64) where {N}
+    out = PauliSum(N, T)
+    out[p] = one(T)
+    return out
+end
+
+function liouvillian_matrix(H::PauliSum{N}; atol=0.0) where {N}
+    D = Int(4)^N
+
+    rows = Int[]
+    cols = Int[]
+    vals = ComplexF64[]
+
+    for Pj in PauliBasis{N}
+        col = pauli_index(Pj)
+
+        Pj_sum = singleton_paulisum(Pj)
+        LPj = 1im * commutator(H, Pj_sum)
+
+        for (Pi, c) in LPj
+            if abs(c) > atol
+                push!(rows, pauli_index(Pi))
+                push!(cols, col)
+                push!(vals, c)
+            end
+        end
+    end
+
+    return sparse(rows, cols, vals, D, D)
+end
+
+# ============================================================
+# Propagation and Metrics
 # ============================================================
 """
- Pauli Propagation, tracking the majorana weight distribution in this case,
- we do not track/compute the correlation function and in previous versions. 
-  cfg :: is a structure containing the parameters for the Pauli Propagation.
-  This new version needs to be tested to check performance (time).
+ Exact propagation in Liouville space
 """
 function weight_dynamics(O0::PauliSum{N,T}, H::PauliSum{N,T}, cfg::PPConfig) where {N,T}
 
@@ -89,26 +151,39 @@ function weight_dynamics(O0::PauliSum{N,T}, H::PauliSum{N,T}, cfg::PPConfig) whe
     snapshots = Vector{Vector{Float64}}()
     raw_norms = Float64[]
 
-    w0, n0 = weight_profile(Ot; normalize=cfg.normalize_weights)
+    # Build Liouvillian Matrix
+    L = liouvillian_matrix(H)
+
+    D = Int(4)^N #Dimension
+    @printf("Liouville dimension: %d x %d\n", D, D)
+
+    println("Exponentiating one timestep propagator")
+    Udt = exp(cfg.dt * Matrix(L))
+
+    vt = coeff_vector(O0)
+
+    w0, n0 = weight_profile(
+        vt,
+        Val(N);
+        normalize=cfg.normalize_weights,
+    )
+    
     push!(snapshots, w0)
     push!(raw_norms, n0)
 
-    generators, coeffs = QuantumChemQC.gens_from_H(H)
+     for step in 1:cfg.n_steps
+        vt = Udt * vt
 
-    @printf("Total Pauli rotations: %d\n", length(coeffs) * cfg.n_steps)
+        w, norm2 = weight_profile(
+            vt,
+            Val(N);
+            normalize=cfg.normalize_weights,
+        )
 
-    for step in 1:cfg.n_steps
-        for j in eachindex(coeffs)
-            θ = 2 * cfg.dt * coeffs[j]
-
-            evolve!(Ot, generators[j], θ)
-            QuantumChemQC.coeff_clip!(Ot; thresh=cfg.coeff_threshold)
-        end
-
-        w, norm2 = weight_profile(Ot; normalize=cfg.normalize_weights)
         push!(snapshots, w)
         push!(raw_norms, norm2)
     end
+
 
     tgrid = collect(0:cfg.dt:(cfg.n_steps * cfg.dt))
 
@@ -170,11 +245,6 @@ function run_single_distance(
     
 
     O = PauliSum(Pauli(Nqubits, Z = [z_qubit]))
-
-    w_init, _ = weight_profile(O; normalize = true)
-    println("Initial normalized Majorana-weight profile:")
-    display(w_init)
-
     out = weight_dynamics(O, H, cfg)
 
     @printf("Initial norm² = %.12e\n", out.raw_norms[1])
@@ -329,7 +399,7 @@ end
 # DATA INPUT AND PARAMETERS
 # ============================================================
 
-#=const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/tensors" # Canonical RHF
+const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/tensors" # Canonical RHF
 const CASES = [
     (0.50, joinpath(BASE, "RHF_H2_R_0p5_tensors.npz"))
     (0.7414, joinpath(BASE, "RHF_H2_R_0p7414_tensors.npz"))
@@ -338,9 +408,9 @@ const CASES = [
     (2.00, joinpath(BASE, "RHF_H2_R_2p0_tensors.npz"))
     (2.50, joinpath(BASE, "RHF_H2_R_2p5_tensors.npz"))
     (3.00, joinpath(BASE, "RHF_H2_R_3p0_tensors.npz"))
-]=#
+]
 
-const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/uhf_tensors" # Canonical UHF
+#=const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/uhf_tensors" # Canonical UHF
 const CASES = [
     (0.50, joinpath(BASE, "UHF_H2_R_0p5_tensors.npz"))
     (0.7414, joinpath(BASE, "UHF_H2_R_0p7414_tensors.npz"))
@@ -349,7 +419,7 @@ const CASES = [
     (2.00, joinpath(BASE, "UHF_H2_R_2p0_tensors.npz"))
     (2.50, joinpath(BASE, "UHF_H2_R_2p5_tensors.npz"))
     (3.00, joinpath(BASE, "UHF_H2_R_3p0_tensors.npz"))
-]
+]=#
 
 #=const BASE = "/Users/admin/PycharmProjects/pyQCTools/QSP/H2-PP/nuhf_tensors" # NATURAL UHF
 const CASES = [
@@ -388,7 +458,7 @@ scan = run_distance_scan(
     z_qubit = 2,
     block = false,
     NOI = false,
-    UNRESTRICTED = true,
+    UNRESTRICTED = false,
 )
 
 p_summary = plot_distance_scan_summary(scan)
