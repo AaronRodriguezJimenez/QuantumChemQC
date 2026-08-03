@@ -120,31 +120,6 @@ function pauli_weight(Pb::Union{PauliBasis{N}, Pauli{N}}) where N
     return w
 end
 
-function coeff_clip!(ps::KetSum{N}; thresh=1e-16) where {N}
-    return filter!(p->abs(p.second) > thresh, ps)
-end
-
-function coeff_clip!(ps::PauliSum{N}; thresh=1e-16) where {N}
-    return filter!(p->abs(p.second) > thresh, ps)
-end
-
-function coeff_clip(ps::PauliSum{N}; thresh=1e-16) where {N}
-    return filter(p->abs(p.second) > thresh, ps)
-end
-
-function weight(p::PauliBasis) 
-    return count_ones(p.x | p.z)
-end
-
-function weight_clip!(ps::PauliSum{N}, max_weight::Int) where {N}
-    return filter!(p->weight(p.first) <= max_weight, ps)
-end
-
-function majorana_weight_clip!(ps::PauliSum{N}, max_weight::Int) where {N}
-    return filter!(p->majorana_weight(p.first) <= max_weight, ps)
-end
-
-
 """
  build_h_cube_mol(a::Float64, n::Int) -> String
 

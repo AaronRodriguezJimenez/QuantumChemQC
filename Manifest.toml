@@ -1355,11 +1355,11 @@ version = "2.8.3"
 
 [[deps.PauliOperators]]
 deps = ["BenchmarkTools", "LinearAlgebra", "Printf", "Random", "StaticArrays"]
-git-tree-sha1 = "d7d21a80c2d8ce099b45e712ba7a252e5caecb1c"
-repo-rev = "sparse_pauli_vector"
+git-tree-sha1 = "ef577e57d33c055217e4051d633e7590aeabda14"
+repo-rev = "main"
 repo-url = "https://github.com/nmayhall/PauliOperators.jl.git"
 uuid = "be646426-f34c-4536-b1d4-a45a9633e6db"
-version = "3.0.1"
+version = "3.1.0"
 
 [[deps.PeriodicTable]]
 deps = ["Base64", "Unitful"]

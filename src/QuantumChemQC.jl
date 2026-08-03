@@ -5,7 +5,15 @@ module QuantumChemQC
 
 using Tullio, LinearAlgebra, SpecialFunctions, GaussianBasis,
       FileIO, StaticArrays, IterTools, Graphs, Printf
-using PauliOperators   # v2
+
+using PauliOperators   # v3
+
+# Explicitly import functions that QuantumChemQC also extends.
+import PauliOperators:
+    coeff_clip!,
+    weight_clip!,
+    majorana_weight_clip!
+
 using DBF
 using Random
 using StatsBase
