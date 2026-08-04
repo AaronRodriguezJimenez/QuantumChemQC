@@ -498,7 +498,7 @@ function molecular_hamiltonian(N_spatial::Int, path::String; tol=1e-10, NOI=true
     # GC.gc()
 
     println("     (Added $count significant spatial interaction terms)")
-    coeff_clip!(H, thresh=coeff_thresh_clip)
+    coeff_clip!(H, coeff_thresh_clip)
     return H
 end
 
@@ -552,7 +552,7 @@ function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, b
             sum!(D, val * ops_dag[ia] * ops_col[ja])
         end
     end
-    coeff_clip!(D, thresh=coeff_thresh_clip)
+    coeff_clip!(D, coeff_thresh_clip)
 
     #- - - r_y terms - - -
     for p in 1:N_spatial, q in 1:N_spatial
@@ -563,7 +563,7 @@ function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, b
             sum!(D, val * ops_dag[ia] * ops_col[ja])
         end
     end
-    coeff_clip!(D)
+    coeff_clip!(D, coeff_thresh_clip)
 
     #- - - r_z terms - - -
     for p in 1:N_spatial, q in 1:N_spatial
@@ -577,7 +577,7 @@ function R_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true, b
 
     # Clear h1 to free memory (optional, but good practice)
     dip_op = nothing
-    coeff_clip!(D, thresh=coeff_thresh_clip)
+    coeff_clip!(D, coeff_thresh_clip)
 
     return D
 end
@@ -631,11 +631,11 @@ function xyz_dipole_moment_op(N_spatial::Int, path::String; tol=1e-10, NOI=true,
             sum!(D, val * ops_dag[ia] * ops_col[ja])
         end
     end
-    coeff_clip!(D, thresh=coeff_thresh_clip)
+    coeff_clip!(D, coeff_thresh_clip)
 
     # Clear h1 to free memory (optional, but good practice)
     dip_op = nothing
-    coeff_clip!(D, thresh=coeff_thresh_clip)
+    coeff_clip!(D, coeff_thresh_clip)
 
     return D
 end
@@ -732,6 +732,6 @@ function homo_lumo_excitation_op(ket::Ket{N}; spin_conserving=true, block=true) 
         end
     end
 
-    coeff_clip!(O, thresh=coeff_thresh_clip)
+    coeff_clip!(O, coeff_thresh_clip)
     return O
 end

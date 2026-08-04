@@ -116,12 +116,12 @@ function QSP_evolution_op(ket, o::PauliSum{N,T},
 
             evolve!(Wt, pb, theta)
 
-            coeff_clip!(Wt, thresh=1.0e-12)
+            coeff_clip!(Wt, 1.0e-12)
 
             WWt = W * Wt
             e1 = expectation_value(WWt, ket)
 
-            coeff_clip!(Wt, thresh=thresh)
+            coeff_clip!(Wt, thresh)
             weight_clip!(Wt, max_weight)
 
             # recompute after pruning
