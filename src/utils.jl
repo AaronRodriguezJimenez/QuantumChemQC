@@ -80,47 +80,6 @@ function Z_to_symbol(Z)
 end
 
 """
- Compute the Majorana weight of a Pauli string.
-"""
-function majorana_weight(Pb::Union{PauliBasis{N}, Pauli{N}}) where N
-    w = 0
-    control = true
-    # tmp = Pb.z & ~Pb.x  # Bitwise AND with bitwise NOT
-    Ibits = ~(Pb.z|Pb.x)
-    Zbits = Pb.z & ~Pb.x
-
-    for i in reverse(1:N)  # Iterate from N down to 1
-        xbit = (Pb.x >> (i - 1)) & 1 != 0
-        Zbit = (Zbits >> (i - 1)) & 1 != 0
-        Ibit = (Ibits >> (i - 1)) & 1 != 0
-        #println("i=$i, xbit=$xbit, Zbit=$Zbit, Ibit=$Ibit, control=$control, w=$w")
-        if Zbit && control || Ibit && !control
-            w += 2
-        elseif xbit
-            control = !control
-            w += 1
-        end
-    end
-    return w
-end
-
-"""
- Compute the Pauli weight of a Pauli string.
-"""
-function pauli_weight(Pb::Union{PauliBasis{N}, Pauli{N}}) where N
-    w = 0
-    for i in 1:N
-        xbit = (Pb.x >> (i - 1)) & 1
-        zbit = (Pb.z >> (i - 1)) & 1
-
-        if xbit != 0 || zbit != 0
-            w += 1
-        end
-    end
-    return w
-end
-
-"""
  build_h_cube_mol(a::Float64, n::Int) -> String
 
     Function to build a cube of hydrogen atoms with side length a (in Angstroms)

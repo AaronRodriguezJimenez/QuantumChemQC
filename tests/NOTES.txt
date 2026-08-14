@@ -1,4 +1,4 @@
-So, ao_eris, follow the convention by libcint.
+ao_eris, follow the convention by libcint.
 For molecular orbital coefficients, openfermion follows the next convention:
 r"""NOTE ON PQRS CONVENTION:
   The data structures which hold fermionic operators / integrals /
