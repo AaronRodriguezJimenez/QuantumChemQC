@@ -1,0 +1,76 @@
+============================================================
+PAULI CORRELATION CALCULATION SUMMARY
+============================================================
+Run name:                    h2_RHF
+Timestamp:                   2026-08-20T18:07:01
+Julia version:               1.11.9
+PauliOperators version:      3.1.0
+Plots version:               1.41.6
+
+CORRELATION DEFINITION
+  C(t) = <psi | A B(t) | psi>
+  B(t) is evolved in the Heisenberg picture.
+  The default call uses A = B = O.
+  Reference ket type:        Ket{4}
+
+SPARSE REPRESENTATION
+  Hamiltonian representation: SparsePauliVector{4, UInt64, Float64}
+  Initial B representation:   SparsePauliVector{4, UInt64, Float64}
+  Left A representation:      SparsePauliVector{4, UInt64, Float64}
+  Hamiltonian terms:           15
+  Initial B terms:             4
+  Left A terms:                4
+  SPV capacity factor:         2.0
+  Requested coefficient type: Float64
+  Hamiltonian imag tolerance:  1.0e-10
+  Final SPV integrity check:   true
+
+TIME EVOLUTION
+  Total time:                  50
+  Number of output intervals:  200
+  dt per output interval:      0.25
+  Trotter order:               1
+  Trotter substeps/interval:   1
+  Rotations per interval:      15
+  Total rotations:             3000
+
+PAULI PROPAGATION / PRUNING
+  Active components:           coefficient + Majorana weight
+  Strategy type:               CompositeTruncation{Tuple{CoeffTruncation, MajoranaWeightTruncation}}
+  Coefficient threshold:       1.000000e-04
+  Maximum Pauli weight:        disabled
+  Maximum Majorana weight:     8
+  Majorana convention:         Jordan-Wigner ordering of the Pauli string
+  Sparse evolution window:     1
+  Pruning correction tracked:  true
+  Correction convention:       C_corrected = C_raw - sum(C_after - C_before)
+  Correction scope:            removes the direct measured change at pruning events;
+                               it is not a rigorous bound on later propagated error
+
+COMPUTATIONAL COST
+  Elapsed time (s):             0.005090
+  Allocated memory (MiB):       0.233
+  GC time (s):                  0.000000
+  Initial propagated terms:     4
+  Final propagated terms:       32
+  Max sampled terms:            32
+
+FINAL CORRELATION
+  Re C(tmax):                   3.8224536498469297e-02
+  Im C(tmax):                   -9.6125177889369684e-01
+  |C(tmax)|:                    9.6201148517926716e-01
+  Re raw C(tmax):               3.7795191247415927e-02
+  Im raw C(tmax):               -9.6096059897386266e-01
+  Re accumulated correction:    -4.2934525105337018e-04
+  Im accumulated correction:    2.9117991983421132e-04
+
+USER METADATA
+  Hamiltonian file: /home/aaron/VCS_projects/QuantumChemQC/tests/h2-RHF_test_ham.npz
+  Operator: T2->4
+  Reference state: 1100
+
+OUTPUT FILES
+  Numerical data:              /home/aaron/VCS_projects/QuantumChemQC/tests/correlation_output/h2_RHF_correlation.txt
+  Correlation plot:            /home/aaron/VCS_projects/QuantumChemQC/tests/correlation_output/h2_RHF_correlation.pdf
+  Summary:                     /home/aaron/VCS_projects/QuantumChemQC/tests/correlation_output/h2_RHF_summary.txt
+============================================================

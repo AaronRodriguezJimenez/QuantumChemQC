@@ -75,7 +75,7 @@ H_sparse = SparsePauliVector(H)
 #
 # Both calculations must use the same generator order because
 # first-order Trotterization depends on rotation ordering.
-# ------------------------------------------------------------
+# ------------------------------------------------------------>
 
 """
  Converts the PauliSum Operator into generators and angles vectors
