@@ -128,79 +128,30 @@ function validate_hamiltonian_coefficients(
     return true
 end
 
-"""
-Construct the deterministic pruning strategy used during propagation.
-
-The three controls are independent:
-
-- `evol_thresh > 0` enables coefficient truncation.
-- `max_weight !== nothing` enables ordinary Pauli-weight truncation.
-- `max_majorana_weight !== nothing` enables Majorana-weight truncation.
-
-Consequently, this factory supports all eight enabled/disabled combinations.
-When more than one filter is active, `CompositeTruncation` applies their
-intersection.  For these deterministic pure-drop filters, a term survives only
-if it satisfies every enabled cutoff.
-"""
+"""Construct the deterministic pruning strategy used during propagation."""
 function make_truncation_strategy(
     evol_thresh::Real,
     max_weight::Union{Nothing,Integer},
-    max_majorana_weight::Union{Nothing,Integer},
 )
     evol_thresh >= 0 || throw(ArgumentError("evol_thresh must be >= 0"))
     max_weight === nothing || max_weight >= 0 ||
         throw(ArgumentError("max_weight must be >= 0 or nothing"))
-    max_majorana_weight === nothing || max_majorana_weight >= 0 ||
-        throw(ArgumentError("max_majorana_weight must be >= 0 or nothing"))
 
-    if max_majorana_weight !== nothing &&
-       !isdefined(PauliOperators, :MajoranaWeightTruncation)
-        throw(ArgumentError(
-            "The installed PauliOperators version does not provide " *
-            "MajoranaWeightTruncation. Update PauliOperators or set " *
-            "max_majorana_weight=nothing.",
-        ))
-    end
+    use_coeff = evol_thresh > 0
+    use_weight = max_weight !== nothing
 
-    # Build a tuple so CompositeTruncation retains concrete strategy types.
-    # This construction happens once, outside the propagation hot loop.
-    strategies = ()
-
-    if evol_thresh > 0
-        strategies = (strategies..., CoeffTruncation(Float64(evol_thresh)))
-    end
-
-    if max_weight !== nothing
-        strategies = (strategies..., WeightTruncation(Int(max_weight)))
-    end
-
-    if max_majorana_weight !== nothing
-        strategies = (
-            strategies...,
-            PauliOperators.MajoranaWeightTruncation(Int(max_majorana_weight)),
+    if use_coeff && use_weight
+        return CompositeTruncation(
+            CoeffTruncation(Float64(evol_thresh)),
+            WeightTruncation(Int(max_weight)),
         )
-    end
-
-    if isempty(strategies)
-        return NoTruncation()
-    elseif length(strategies) == 1
-        return first(strategies)
+    elseif use_coeff
+        return CoeffTruncation(Float64(evol_thresh))
+    elseif use_weight
+        return WeightTruncation(Int(max_weight))
     else
-        return CompositeTruncation(strategies...)
+        return NoTruncation()
     end
-end
-
-"""Human-readable list of the enabled deterministic pruning components."""
-function truncation_description(
-    evol_thresh::Real,
-    max_weight::Union{Nothing,Integer},
-    max_majorana_weight::Union{Nothing,Integer},
-)
-    components = String[]
-    evol_thresh > 0 && push!(components, "coefficient")
-    max_weight !== nothing && push!(components, "Pauli weight")
-    max_majorana_weight !== nothing && push!(components, "Majorana weight")
-    return isempty(components) ? "none" : join(components, " + ")
 end
 
 """
@@ -440,8 +391,6 @@ function write_summary(
     generators,
     evol_thresh,
     max_weight,
-    max_majorana_weight,
-    truncation,
     window,
     track_pruning_correction,
     capacity_factor,
@@ -498,12 +447,8 @@ function write_summary(
         println(io)
 
         println(io, "PAULI PROPAGATION / PRUNING")
-        println(io, "  Active components:           ", truncation_description(evol_thresh, max_weight, max_majorana_weight))
-        println(io, "  Strategy type:               ", typeof(truncation))
-        println(io, "  Coefficient threshold:       ", evol_thresh > 0 ? @sprintf("%.6e", evol_thresh) : "disabled")
+        @printf(io, "  Coefficient threshold:       %.6e\n", evol_thresh)
         println(io, "  Maximum Pauli weight:        ", max_weight === nothing ? "disabled" : string(max_weight))
-        println(io, "  Maximum Majorana weight:     ", max_majorana_weight === nothing ? "disabled" : string(max_majorana_weight))
-        println(io, "  Majorana convention:         Jordan-Wigner ordering of the Pauli string")
         println(io, "  Sparse evolution window:     ", window)
         println(io, "  Pruning correction tracked:  ", track_pruning_correction)
         println(io, "  Correction convention:       C_corrected = C_raw - sum(C_after - C_before)")
@@ -568,11 +513,8 @@ Important keyword inputs
 - `left_operator=O`: static operator A in C(t)=<psi|A B(t)|psi>.
 - `tmax`: final time.
 - `n_intervals`: number of output/evolution intervals.
-- `evol_thresh=1e-3`: coefficient pruning threshold; set `0.0` to disable it.
-- `max_weight=nothing`: maximum ordinary Pauli weight; `nothing` disables it.
-- `max_majorana_weight=nothing`: maximum Majorana weight under the Jordan-Wigner
-  encoding; `nothing` disables it. It may be combined independently with the
-  coefficient and ordinary Pauli-weight filters.
+- `evol_thresh=1e-3`: coefficient pruning threshold.
+- `max_weight=nothing`: maximum Pauli weight; `nothing` disables weight pruning.
 - `trotter_order=1`: first- or second-order Trotterization.
 - `n_trotter=1`: Trotter substeps inside each output interval.
 - `window=1`: SPV merge/truncation cadence. Keep 1 for strict per-rotation pruning.
@@ -610,7 +552,6 @@ function run_correlation_calculation(
     n_intervals::Integer,
     evol_thresh::Real = 1e-3,
     max_weight::Union{Nothing,Integer} = nothing,
-    max_majorana_weight::Union{Nothing,Integer} = nothing,
     trotter_order::Integer = 1,
     n_trotter::Integer = 1,
     window::Integer = 1,
@@ -666,11 +607,7 @@ function run_correlation_calculation(
         order = Int(trotter_order),
     )
 
-    truncation = make_truncation_strategy(
-        evol_thresh,
-        max_weight,
-        max_majorana_weight,
-    )
+    truncation = make_truncation_strategy(evol_thresh, max_weight)
 
     println()
     println("============================================================")
@@ -687,11 +624,8 @@ function run_correlation_calculation(
     println("Trotter substeps:         ", n_trotter)
     println("Rotations per interval:   ", length(generators))
     println("Total rotations:          ", length(generators) * n_intervals)
-    println("Pruning components:       ", truncation_description(evol_thresh, max_weight, max_majorana_weight))
-    println("Truncation strategy type: ", typeof(truncation))
-    println("Coefficient threshold:    ", evol_thresh > 0 ? @sprintf("%.6e", evol_thresh) : "disabled")
+    @printf("Pruning threshold:        %.6e\n", evol_thresh)
     println("Maximum Pauli weight:     ", max_weight === nothing ? "disabled" : max_weight)
-    println("Maximum Majorana weight:  ", max_majorana_weight === nothing ? "disabled" : max_majorana_weight)
     println("SPV window:               ", window)
     println("Pruning correction:       ", track_pruning_correction)
 
@@ -762,8 +696,6 @@ function run_correlation_calculation(
         generators = generators,
         evol_thresh = Float64(evol_thresh),
         max_weight = max_weight,
-        max_majorana_weight = max_majorana_weight,
-        truncation = truncation,
         window = Int(window),
         track_pruning_correction = track_pruning_correction,
         capacity_factor = Float64(capacity_factor),
@@ -799,7 +731,6 @@ function run_correlation_calculation(
         term_counts = result.term_counts,
         final_operator = result.final_operator,
         stats = stats,
-        truncation = truncation,
         paths = (
             data = data_path,
             plot = plot_path,
@@ -809,7 +740,7 @@ function run_correlation_calculation(
 end
 
 # ============================================================================
-# 6. EXAMPLE: H2 MOLECULE
+# 6. EXAMPLE ADAPTED TO THE H2 SETUP FROM THE ORIGINAL SCRIPT
 # ============================================================================
 #
 # Keep this calculator file general. In a small driver script or in the REPL:
@@ -819,7 +750,7 @@ using NPZ
 using PauliOperators
 #include("correlation_calculator.jl")
 
-data_path =  "/home/aaron/Vertical_excitation/furan_tensors_sto3g/Furan-STO3g_integrals.npz"
+data_path = "/home/aaron/VCS_projects/QuantumChemQC/tests/h2-RHF_test_ham.npz" 
 data = npzread(data_path)
 Norbs = size(data["h1e"], 1)
 
@@ -830,6 +761,9 @@ H = QuantumChemQC.molecular_hamiltonian(
        block = false,
     )
 
+#Scale Hamiltonian?
+H = H    
+#
 # Excitation operator
 function excitation_operator_hermitian(N::Int, i::Int, j::Int)
     adag_i = jordan_wigner(i, N)
@@ -840,48 +774,57 @@ function excitation_operator_hermitian(N::Int, i::Int, j::Int)
     return O + O'
 end
 
-O = excitation_operator_hermitian(58, 37, 35)
+O = excitation_operator_hermitian(4, 3, 1)
+println(typeof(O))
 coeff_clip!(O, 1e-8)
+println("Excitation operator (O):")
 display(O)
 
-hf_string = "1"^36 * "0"^22
+hf_string = "1100"#"1"^2 * "0"^2
+#a_string = "IIII"
+a_string = "ZXXZ"
+#a_string = "IXZX"
+A = PauliOperators.Pauli(a_string)
+A = PauliOperators.PauliSum(A)
+
+b_string = "XZZX"
+#b_string = "IXZX"
+B = PauliOperators.Pauli(b_string)
+B = PauliOperators.PauliSum(B)
+println("Right operator (B):")
+display(B)
+
+println("Left operator (A):")
+display(A)
 println("HF string length: ", length(hf_string))
 ket, _ = QuantumChemQC.string_to_ket(hf_string)
+display(ket)
+println("A*|ket> = ", A*ket)
 
 result = run_correlation_calculation(
        H,
-       O,
+       B,
        ket;
-       tmax = 20.0,
-       n_intervals = 400,
-       evol_thresh = 0.001,
+       tmax = 80.0,
+       left_operator = A,
+       n_intervals = 800,
+       evol_thresh = 0.0001,
        max_weight = nothing,
-       max_majorana_weight = nothing,
        trotter_order = 1,
        n_trotter = 1,
        window = 1,
        track_pruning_correction = true,
        coefficient_type = Float64,  # fast path when H/O coefficients are real
        output_dir = joinpath(@__DIR__, "correlation_output"),
-       run_name = "furan_RHF",
+       run_name = "H2_RHF_0",
        show_raw_on_plot = false,
        metadata = Dict(
            "Hamiltonian file" => data_path,
-           "Reference state" => "1100",
-           "Operator" => "T 18->19",
+           "Reference state" => "RHF",
+           "Operator" => "T 1->1",
        ),
    )
 
-# Truncation controls are independent. Examples:
-#
-#   evol_thresh = 0.0,    max_weight = nothing, max_majorana_weight = nothing # none
-#   evol_thresh = 1e-4,   max_weight = nothing, max_majorana_weight = nothing # coefficient only
-#   evol_thresh = 0.0,    max_weight = 4,       max_majorana_weight = nothing # Pauli weight only
-#   evol_thresh = 0.0,    max_weight = nothing, max_majorana_weight = 4       # Majorana weight only
-#   evol_thresh = 1e-4,   max_weight = 4,       max_majorana_weight = 4       # all three
-#
-# Any other enabled/disabled combination is accepted as well.
-#
 # For the exact autocorrelation convention of the supplied code, no
 # `left_operator` keyword is needed because A defaults to O.
 #

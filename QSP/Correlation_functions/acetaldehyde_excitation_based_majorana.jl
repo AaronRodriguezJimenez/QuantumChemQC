@@ -1,6 +1,7 @@
 #!/usr/bin/env julia
 
 """
+This is a test code for the initial prototype of: 
 General two-point correlation-function calculator based on PauliOperators.jl
 and SparsePauliVector propagation.
 
@@ -839,8 +840,8 @@ function excitation_operator_hermitian(N::Int, i::Int, j::Int)
     return O + O'
 end
 
-O = excitation_operator_hermitian(38, 26, 22)
-
+O = excitation_operator_hermitian(38, 25, 24)
+coeff_clip!(O, 1e-8)
 display(O)
 
 hf_string = "1"^24 * "0"^14 #Acetaldehyde

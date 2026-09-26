@@ -1,6 +1,7 @@
 #!/usr/bin/env julia
 
 """
+This is a test code for the initial prototype of:
 General two-point correlation-function calculator based on PauliOperators.jl
 and SparsePauliVector propagation.
 
@@ -750,7 +751,8 @@ using PauliOperators
 #include("correlation_calculator.jl")
 
 #data_path = joinpath(@__DIR__, "h2-RHF_test_ham.npz") 
-data_path =  "/home/aaron/Vertical_excitation/furan_tensors_sto3g/Furan-STO3g_integrals.npz"
+#data_path =  "/home/aaron/Vertical_excitation/furan_tensors_sto3g/Furan-STO3g_integrals.npz"
+data_path =  "/home/aaron/Vertical_excitation/Furan_AS-STO3g_integrals_2.npz" #Novirtuals
 data = npzread(data_path)
 Norbs = size(data["h1e"], 1)
 
@@ -758,9 +760,16 @@ H = QuantumChemQC.molecular_hamiltonian(
        Norbs,
        data_path;
        NOI = false,
-       block = true,
+       block = false,
     )
 
+#Scale Hamiltonian?
+#H = H    
+#println("- - - Total Hamiltonian - - -")
+#display(H)
+#coeff_clip!(H, 1e-6)
+#println("- - - Pruned H - - -")
+#display(H)
 #
 # Excitation operator
 function excitation_operator_hermitian(N::Int, i::Int, j::Int)
@@ -768,15 +777,36 @@ function excitation_operator_hermitian(N::Int, i::Int, j::Int)
     a_j    = jordan_wigner(j, N)'
 
     O = adag_i * a_j
+    
 
-    return O + O'
+    return O + O' 
 end
 
-O = excitation_operator_hermitian(58, 37, 35)
+function excitation_operator_antihermitian(N::Int, i::Int, j::Int)
+    adag_i = jordan_wigner(i, N)
+    adag_j = jordan_wigner(j, N)
 
+    a_i = adag_i'
+    a_j = adag_j'
+
+    return adag_i * a_j - adag_j * a_i
+end
+
+#O = excitation_operator_hermitian(58, 37, 33)
+#O = excitation_operator_hermitian(38, 38, 35)
+O = excitation_operator_antihermitian(38, 38, 35)
+coeff_clip!(O, 1e-6)
+println("O operator:")
 display(O)
 
-hf_string = "1"^36 * "0"^22
+#adag_i = jordan_wigner(38, 38)
+#a_j    = jordan_wigner(35, 38)'
+#println("* * * adag_i ")
+#display(adag_i)
+
+#hf_string = "1"^36 * "0"^22
+hf_string = "1"^36 * "0"^2 #excluding virtuals
+#hf_string = "0"^38 #All-zero state
 
 println("HF string length: ", length(hf_string))
 ket, _ = QuantumChemQC.string_to_ket(hf_string)
@@ -785,17 +815,18 @@ result = run_correlation_calculation(
        H,
        O,
        ket;
-       tmax = 25.0,
-       n_intervals = 250,
-       evol_thresh = 0.0001,
-       max_weight = 4,
+       left_operator = O,
+       tmax = 5.0,
+       n_intervals = 100,
+       evol_thresh = 0.001,
+       max_weight = nothing,
        trotter_order = 1,
        n_trotter = 1,
        window = 1,
        track_pruning_correction = true,
-       coefficient_type = Float64,  # fast path when H/O coefficients are real
+       coefficient_type = ComplexF64, #Float64,  # fast path when H/O coefficients are real
        output_dir = joinpath(@__DIR__, "correlation_output"),
-       run_name = "furan_RHF",
+       run_name = "furan_single_O",
        show_raw_on_plot = false,
        metadata = Dict(
            "Hamiltonian file" => data_path,
