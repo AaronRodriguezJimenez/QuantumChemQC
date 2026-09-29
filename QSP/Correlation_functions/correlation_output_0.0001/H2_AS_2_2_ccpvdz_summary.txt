@@ -1,8 +1,8 @@
 ============================================================
 PAULI CORRELATION CALCULATION SUMMARY
 ============================================================
-Run name:                    H2_6-31g
-Timestamp:                   2026-09-26T12:58:35
+Run name:                    H2_AS_2_2_ccpvdz
+Timestamp:                   2026-09-28T15:26:48
 Julia version:               1.11.9
 PauliOperators version:      3.1.0
 Plots version:               1.41.6
@@ -11,13 +11,13 @@ CORRELATION DEFINITION
   C(t) = <psi | A B(t) | psi>
   B(t) is evolved in the Heisenberg picture.
   The default call uses A = B = O.
-  Reference ket type:        Ket{8}
+  Reference ket type:        Ket{4}
 
 SPARSE REPRESENTATION
-  Hamiltonian representation: SparsePauliVector{8, UInt64, Float64}
-  Initial B representation:   SparsePauliVector{8, UInt64, Float64}
-  Left A representation:      SparsePauliVector{8, UInt64, Float64}
-  Hamiltonian terms:           185
+  Hamiltonian representation: SparsePauliVector{4, UInt64, Float64}
+  Initial B representation:   SparsePauliVector{4, UInt64, Float64}
+  Left A representation:      SparsePauliVector{4, UInt64, Float64}
+  Hamiltonian terms:           15
   Initial B terms:             2
   Left A terms:                2
   SPV capacity factor:         2.0
@@ -31,8 +31,8 @@ TIME EVOLUTION
   dt per output interval:      0.1
   Trotter order:               1
   Trotter substeps/interval:   1
-  Rotations per interval:      185
-  Total rotations:             92500
+  Rotations per interval:      15
+  Total rotations:             7500
 
 PAULI PROPAGATION / PRUNING
   Active components:           coefficient
@@ -48,29 +48,29 @@ PAULI PROPAGATION / PRUNING
                                it is not a rigorous bound on later propagated error
 
 COMPUTATIONAL COST
-  Elapsed time (s):             33.274469
-  Allocated memory (MiB):       5.974
+  Elapsed time (s):             0.012424
+  Allocated memory (MiB):       0.403
   GC time (s):                  0.000000
   Initial propagated terms:     2
-  Final propagated terms:       7860
-  Max sampled terms:            7897
+  Final propagated terms:       32
+  Max sampled terms:            32
 
 FINAL CORRELATION
-  Re C(tmax):                   -2.7835751667106429e-01
-  Im C(tmax):                   4.9813242673622660e-01
-  |C(tmax)|:                    5.7063019693441042e-01
-  Re raw C(tmax):               -2.4088949619167141e-01
-  Im raw C(tmax):               4.6196248482203323e-01
-  Re accumulated correction:    3.7468020479392898e-02
-  Im accumulated correction:    -3.6169941914193399e-02
+  Re C(tmax):                   3.5125076447366155e-01
+  Im C(tmax):                   8.6015503066970489e-01
+  |C(tmax)|:                    9.2910913047377408e-01
+  Re raw C(tmax):               3.4928024294914545e-01
+  Im raw C(tmax):               8.5916532979009053e-01
+  Re accumulated correction:    -1.9705215245160723e-03
+  Im accumulated correction:    -9.8970087961436359e-04
 
 USER METADATA
-  Hamiltonian file: /home/aaron/PycharmProjects/pyQCTools/QSP/small_molecules/H2_integrals/H2-RHF_6-31g_integrals.npz
+  Hamiltonian file: /home/aaron/PycharmProjects/pyQCTools/QSP/small_molecules/H2_integrals/H2-RHF_AS_cc-pvdz_2_2_integrals.npz
   Operator: T a-HOMO-> a-LUMO
   Reference state: 1100
 
 OUTPUT FILES
-  Numerical data:              /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_6-31g_correlation.txt
-  Correlation plot:            /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_6-31g_correlation.pdf
-  Summary:                     /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_6-31g_summary.txt
+  Numerical data:              /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_2_2_ccpvdz_correlation.txt
+  Correlation plot:            /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_2_2_ccpvdz_correlation.pdf
+  Summary:                     /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_2_2_ccpvdz_summary.txt
 ============================================================

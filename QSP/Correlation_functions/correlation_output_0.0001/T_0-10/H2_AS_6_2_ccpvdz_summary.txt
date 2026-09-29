@@ -1,0 +1,76 @@
+============================================================
+PAULI CORRELATION CALCULATION SUMMARY
+============================================================
+Run name:                    H2_AS_6_2_ccpvdz
+Timestamp:                   2026-09-28T14:18:37
+Julia version:               1.11.9
+PauliOperators version:      3.1.0
+Plots version:               1.41.6
+
+CORRELATION DEFINITION
+  C(t) = <psi | A B(t) | psi>
+  B(t) is evolved in the Heisenberg picture.
+  The default call uses A = B = O.
+  Reference ket type:        Ket{12}
+
+SPARSE REPRESENTATION
+  Hamiltonian representation: SparsePauliVector{12, UInt64, Float64}
+  Initial B representation:   SparsePauliVector{12, UInt64, Float64}
+  Left A representation:      SparsePauliVector{12, UInt64, Float64}
+  Hamiltonian terms:           327
+  Initial B terms:             2
+  Left A terms:                2
+  SPV capacity factor:         2.0
+  Requested coefficient type: Float64
+  Hamiltonian imag tolerance:  1.0e-10
+  Final SPV integrity check:   true
+
+TIME EVOLUTION
+  Total time:                  10
+  Number of output intervals:  100
+  dt per output interval:      0.1
+  Trotter order:               1
+  Trotter substeps/interval:   1
+  Rotations per interval:      327
+  Total rotations:             32700
+
+PAULI PROPAGATION / PRUNING
+  Active components:           coefficient
+  Strategy type:               CoeffTruncation
+  Coefficient threshold:       1.000000e-04
+  Maximum Pauli weight:        disabled
+  Maximum Majorana weight:     disabled
+  Majorana convention:         Jordan-Wigner ordering of the Pauli string
+  Sparse evolution window:     1
+  Pruning correction tracked:  true
+  Correction convention:       C_corrected = C_raw - sum(C_after - C_before)
+  Correction scope:            removes the direct measured change at pruning events;
+                               it is not a rigorous bound on later propagated error
+
+COMPUTATIONAL COST
+  Elapsed time (s):             36.784112
+  Allocated memory (MiB):       14.912
+  GC time (s):                  0.000721
+  Initial propagated terms:     2
+  Final propagated terms:       38689
+  Max sampled terms:            38689
+
+FINAL CORRELATION
+  Re C(tmax):                   -8.5285720491763217e-01
+  Im C(tmax):                   -1.2391805830500258e+00
+  |C(tmax)|:                    1.5043051317429312e+00
+  Re raw C(tmax):               -5.0555849764814964e-01
+  Im raw C(tmax):               -9.6990931042796980e-01
+  Re accumulated correction:    3.4729870726948253e-01
+  Im accumulated correction:    2.6927127262205602e-01
+
+USER METADATA
+  Hamiltonian file: /home/aaron/PycharmProjects/pyQCTools/QSP/small_molecules/H2_integrals/H2-RHF_AS_cc-pvdz_6_2_integrals.npz
+  Operator: T a-HOMO-> a-LUMO
+  Reference state: 1100
+
+OUTPUT FILES
+  Numerical data:              /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_6_2_ccpvdz_correlation.txt
+  Correlation plot:            /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_6_2_ccpvdz_correlation.pdf
+  Summary:                     /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_6_2_ccpvdz_summary.txt
+============================================================

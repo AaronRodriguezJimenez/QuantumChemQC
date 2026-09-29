@@ -1,8 +1,8 @@
 ============================================================
 PAULI CORRELATION CALCULATION SUMMARY
 ============================================================
-Run name:                    H2_6-31g
-Timestamp:                   2026-09-26T12:58:35
+Run name:                    H2_AS_4_2_ccpvdz
+Timestamp:                   2026-09-28T14:16:42
 Julia version:               1.11.9
 PauliOperators version:      3.1.0
 Plots version:               1.41.6
@@ -26,13 +26,13 @@ SPARSE REPRESENTATION
   Final SPV integrity check:   true
 
 TIME EVOLUTION
-  Total time:                  50
-  Number of output intervals:  500
+  Total time:                  10
+  Number of output intervals:  100
   dt per output interval:      0.1
   Trotter order:               1
   Trotter substeps/interval:   1
   Rotations per interval:      185
-  Total rotations:             92500
+  Total rotations:             18500
 
 PAULI PROPAGATION / PRUNING
   Active components:           coefficient
@@ -48,29 +48,29 @@ PAULI PROPAGATION / PRUNING
                                it is not a rigorous bound on later propagated error
 
 COMPUTATIONAL COST
-  Elapsed time (s):             33.274469
-  Allocated memory (MiB):       5.974
+  Elapsed time (s):             3.463184
+  Allocated memory (MiB):       2.966
   GC time (s):                  0.000000
   Initial propagated terms:     2
-  Final propagated terms:       7860
-  Max sampled terms:            7897
+  Final propagated terms:       5644
+  Max sampled terms:            5644
 
 FINAL CORRELATION
-  Re C(tmax):                   -2.7835751667106429e-01
-  Im C(tmax):                   4.9813242673622660e-01
-  |C(tmax)|:                    5.7063019693441042e-01
-  Re raw C(tmax):               -2.4088949619167141e-01
-  Im raw C(tmax):               4.6196248482203323e-01
-  Re accumulated correction:    3.7468020479392898e-02
-  Im accumulated correction:    -3.6169941914193399e-02
+  Re C(tmax):                   -2.3553437312935602e-01
+  Im C(tmax):                   -8.1740258244743469e-01
+  |C(tmax)|:                    8.5066058020644986e-01
+  Re raw C(tmax):               -2.1038776411621185e-01
+  Im raw C(tmax):               -8.0802406881372058e-01
+  Re accumulated correction:    2.5146609013144167e-02
+  Im accumulated correction:    9.3785136337141070e-03
 
 USER METADATA
-  Hamiltonian file: /home/aaron/PycharmProjects/pyQCTools/QSP/small_molecules/H2_integrals/H2-RHF_6-31g_integrals.npz
+  Hamiltonian file: /home/aaron/PycharmProjects/pyQCTools/QSP/small_molecules/H2_integrals/H2-RHF_AS_cc-pvdz_4_2_integrals.npz
   Operator: T a-HOMO-> a-LUMO
   Reference state: 1100
 
 OUTPUT FILES
-  Numerical data:              /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_6-31g_correlation.txt
-  Correlation plot:            /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_6-31g_correlation.pdf
-  Summary:                     /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_6-31g_summary.txt
+  Numerical data:              /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_4_2_ccpvdz_correlation.txt
+  Correlation plot:            /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_4_2_ccpvdz_correlation.pdf
+  Summary:                     /home/aaron/VCS_projects/QuantumChemQC/QSP/Correlation_functions/correlation_output_0.0001/H2_AS_4_2_ccpvdz_summary.txt
 ============================================================

@@ -2,7 +2,7 @@
 PAULI CORRELATION CALCULATION SUMMARY
 ============================================================
 Run name:                    H2_sto3g
-Timestamp:                   2026-09-25T16:15:32
+Timestamp:                   2026-09-26T13:00:26
 Julia version:               1.11.9
 PauliOperators version:      3.1.0
 Plots version:               1.41.6
@@ -48,7 +48,7 @@ PAULI PROPAGATION / PRUNING
                                it is not a rigorous bound on later propagated error
 
 COMPUTATIONAL COST
-  Elapsed time (s):             0.012148
+  Elapsed time (s):             0.012155
   Allocated memory (MiB):       0.403
   GC time (s):                  0.000000
   Initial propagated terms:     2
@@ -66,7 +66,7 @@ FINAL CORRELATION
 
 USER METADATA
   Hamiltonian file: /home/aaron/PycharmProjects/pyQCTools/QSP/small_molecules/H2_integrals/H2-RHF_sto-3g_integrals.npz
-  Operator: a-HOMO->a-LUMO
+  Operator: T a-HOMO-> a-LUMO
   Reference state: 1100
 
 OUTPUT FILES
